@@ -1,0 +1,253 @@
+---
+title: "scRNAseq Interstitial cells"
+author: "Marion Hardy"
+date: "`r Sys.Date()`"
+output: 
+  html_document: 
+    toc: yes
+    theme: spacelab
+    highlight: monochrome
+editor_options: 
+  chunk_output_type: console
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE, cache = T, echo = FALSE, warning = F, cache.lazy = F)
+knitr::opts_chunk$set(fig.width=10, fig.height=8) 
+
+library(tidyverse)
+library(Seurat)
+```
+
+# Introduction
+
+Data from our collaborator Panagiotis rds file for a
+SingleCellExperiment object containing the single cell data for **the
+interstitial cells** of *Hydra Vulgaris* during multiples stages of
+regeneration after bisection:
+
+<https://www.dropbox.com/scl/fi/dg76sigjnj5u6qr06xk79/sce_interstitial_Juliano.rds?rlkey=f0y3lqt0wdcwq652zisnrpf9t&dl=0>
+
+The coldata of the object contain cell annotation including
+
+-   quality metrics: nFeature nCount (not MT percentage interestingly)
+
+-   batch info: either 2869 (3162 barcodes), 3113 (10352 barcodes), 3271
+    (13279 barcodes), 3357 (3875 barcodes)
+
+-   originating experiments (head or foot regeneration)
+
+-   experimental time points
+
+-   pseudo-axis assignment (vals.axis ranging from 0-1, increasing in
+    the foot-tentacle direction)
+
+-   mitotic and apoptotic signatures indices from 0 to 1
+
+The rowdata contains gene annotation, using Entrez-gene identifiers. I
+have also noticed that in the sce objects there's
+
+-   PCA, tSNE and UMAP coordinates for reduced dimensions + corrected
+    for batch values
+
+-   assay metafeatures hold gene_id, product, gene, is.rib.prot.gene
+    (T/F), HypoMarkers (T/F), ccyle (T/F), apopt (T/F) etc
+
+I converted the sce objects 6.6gb into a seurat object 2.2 gb and
+checked that all cited parameters could be found in it.
+
+# Data loading
+
+```{r}
+
+# int = readRDS("./data/sce_interstitial_Juliano.rds")
+# seurat = as.Seurat(int, counts = "counts", data=NULL)
+
+seurat = readRDS("data/seurat.Rds")
+
+```
+
+```{r}
+
+head(seurat@meta.data)
+table(seurat@meta.data$batch)
+
+head(Features(seurat)) # I can't use percentagefeatureset because the features dont have unique names
+
+```
+
+# QC
+## No filtering applied
+```{r, fig.width=8, fig.height=5}
+
+# QC and filtering -------------------------------------------------------------
+# calculate mitochondrial percentage
+# I think i might have to get a list with the feature id and cross with that to get mt percentages
+seurat$mitoPercent = PercentageFeatureSet(seurat, pattern='^MT-')
+# head(seurat@meta.data) # we now have the mitopercent added to the metadata
+
+# Just like Cell Ranger output, feature in the following results represents gene. 
+# nFeature_ is the number of genes detected in each cell. nCount_ is the 
+# total number of molecules detected within a cell.
+Idents(seurat) = seurat@meta.data$batch
+VlnPlot(seurat, features = c("nFeature_originalexp", "nCount_originalexp"), 
+              ncol = 2, pt.size = 0.0001, split.by = 'batch')
+
+# FeatureScatter is typically used to visualize feature-feature relationships, but can be used
+# for anything calculated by the object, i.e. columns in object metadata, PC scores etc.
+
+FeatureScatter(seurat, feature1 = "nCount_originalexp", feature2 = "nFeature_originalexp") + 
+  theme(legend.position="none") # 0.91 show correlations between features and gene counts
+
+```
+
+0.91 for correlation between nFeature and nCount is a good score.
+As a reminder, nFeature is number of unique RNAs (gene that matched at least one UMI) found in a droplet and nCount is number of total molecules found in a droplet. Ideally they'd be exactly proportional?
+
+
+## Filtering applied
+
+Here, we filter away cells that have unique feature counts(genes) over 6000 
+or less than 200. Too many features could indicate a doublet too little might indicate an empty droplet
+
+We should also filter away cells that have > 10% mitochondrial counts
+
+```{r, fig.width=8, fig.height=5}
+
+# Here, we filter away cells that have unique feature counts(genes) over 6000 
+# or less than 200. Too many features could indicate a doublet too little might indicate an empty droplet
+# We should also filter away cells that have > 10% mitochondrial counts
+
+seurat_f = subset(seurat, subset = nFeature_originalexp > 200 & nFeature_originalexp < 6000)
+
+VlnPlot(seurat_f, features = c("nFeature_originalexp", "nCount_originalexp"), 
+              ncol = 2, pt.size = 0.0001, split.by = 'batch' )
+
+FeatureScatter(seurat_f, feature1 = "nCount_originalexp", feature2 = "nFeature_originalexp") + 
+  theme(legend.position="none")
+
+```
+
+
+# Normalization/scaling
+
+SCTransform is better than using the standard (old) normalization pipeline because it does negative binomial regression (just as DESeq2 does for RNAseq) which does variance regression that nrormalization did not do>
+
+"...omits the need for heuristic steps including pseudocount addition or log-transformation"
+
+```{r, fig.width=8, fig.height=5}
+
+seurat_f = SCTransform(seurat_f, assay = "originalexp", verbose = T) # , vars.to.regress = "percent.mt"
+
+# These are now standard steps in the Seurat workflow for visualization and clustering
+
+Idents(seurat) = seurat@meta.data$batch
+seurat_f <- RunPCA(seurat_f, features = VariableFeatures(object = seurat_f), verbose = T)
+
+DimPlot(seurat_f, reduction = "pca")
+
+
+seurat_f <- RunUMAP(seurat_f, dims = 1:30, verbose = T)
+DimPlot(seurat_f, reduction = "umap")
+
+
+seurat_f <- FindNeighbors(seurat_f, dims = 1:30, verbose = T)
+
+seurat_f <- FindClusters(seurat_f, verbose = T)
+
+DimPlot(seurat_f, label = TRUE)
+
+```
+
+
+
+
+```{r, eval=F}
+
+
+
+
+## Scaling ---------------------------------------------------------------------
+
+# Next, we apply a linear transformation (‘scaling’) that is a standard pre-processing 
+# step prior to dimensional reduction techniques like PCA. The ScaleData() function:
+#   
+# shifts the expression of each gene, so that the mean expression across cells is 0
+# scales the expression of each gene, so that the variance across cells is 1
+# this step gives equal weight in downstream analyses, so that highly-expressed 
+# genes do not dominate the results of this are stored in seurat_f[["RNA"]]@scale.data
+
+all_genes <- rownames(seurat_f)
+seurat_f <- ScaleData(seurat_f, features = all_genes)
+
+# Linear dimensional reduction--------------------------------------------------
+
+seurat_f <- RunPCA(seurat_f, features = VariableFeatures(object = seurat_f))
+
+DimPlot(seurat_f, reduction = "pca")
+
+VizDimLoadings(seurat_f, dims = 1:2, reduction = "pca")
+
+# In particular DimHeatmap() allows for easy exploration of the primary sources 
+# of heterogeneity in a dataset, and can be useful when trying to decide which 
+# PCs to include for further downstream analyses. Both cells and features are 
+# ordered according to their PCA scores. Setting cells to a number plots the 
+# ‘extreme’ cells on both ends of the spectrum, which dramatically speeds 
+# plotting for large datasets. Though clearly a supervised analysis, we find 
+# this to be a valuable tool for exploring correlated feature sets.
+
+DimHeatmap(seurat_f, dims = 1, cells = 500, balanced = TRUE)
+
+# To overcome the extensive technical noise in any single feature for scRNA-seq 
+# data, Seurat clusters cells based on their PCA scores, with each PC essentially 
+# representing a ‘metafeature’ that combines information across a correlated 
+# feature set. The top principal components therefore represent a robust 
+# compression of the dataset. Here, we choose first 20 PCs.
+
+DimHeatmap(seurat_f, dims = 1:18, cells = 500, balanced = TRUE)
+DimHeatmap(seurat_f, dims = 1:9, cells = 500, balanced = TRUE)
+
+# Clustering the cells ---------------------------------------------------------
+
+seurat_f <- FindNeighbors(seurat_f, dims = 1:14, verbose = FALSE)
+seurat_f <- FindClusters(seurat_f, resolution = 0.5, verbose = FALSE)
+
+# Look at cluster IDs of the first 5 cells
+head(Idents(seurat_f), 5)
+
+
+# UMAP / tsneq -----------------------------------------------------------------
+
+seurat_f <- RunUMAP(seurat_f, dims = 1:20, verbose = FALSE)
+DimPlot(seurat_f, reduction = "umap", label = T)
+
+plot <- DimPlot(object = seurat_f)
+LabelClusters(plot = plot, id = 'ident')
+ggsave(paste0(lnames[i],"_UMAP_labelled.png"),last_plot(),"./figures/GSE144236/", dpi = 500 ,
+       device = "png")
+
+seurat_f <- RunTSNE(seurat_f, dims = 1:20, verbose = FALSE)
+DimPlot(seurat_f, reduction = "tsne")
+plot1 <- DimPlot(seurat_f, reduction = "tsne")
+LabelClusters(plot1, id = "ident")
+
+ggsave(paste0(lnames[i],"_tsne_labelled.png"),last_plot(),"./figures/GSE144236/", dpi = 500 ,
+       device = "png")
+
+# https://distill.pub/2016/misread-tsne/
+
+saveRDS(seurat_f, file = paste0("./data_output/GSE144236/",lnames[i],"_seurat_f_processed.rds"))
+
+```
+
+
+
+
+
+
+
+
+
+

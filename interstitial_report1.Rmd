@@ -30,6 +30,13 @@ regeneration after bisection:
 
 <https://www.dropbox.com/scl/fi/dg76sigjnj5u6qr06xk79/sce_interstitial_Juliano.rds?rlkey=f0y3lqt0wdcwq652zisnrpf9t&dl=0>
 
+BUT they mapped it to *Hydra Magnipapillata (105)* "Drop-seq reads from
+15 libraries generated for Hydra vulgaris strain AEP were mapped to the
+2.0 genome assembly of closely related Hydra vulgaris strain 105
+(available at <https://research.nhgri.nih.gov/hydra/>) and processed
+using the Hydra 2.0 gene models. Strain Hydra vulgaris 105 was formerly
+referred to as Hydra magnipapillata 105."
+
 The coldata of the object contain cell annotation including
 
 -   quality metrics: nFeature nCount (not MT percentage interestingly)
@@ -69,28 +76,52 @@ seurat = readRDS("data/seurat.Rds")
 
 ```
 
-```{r}
+```{r, echo=TRUE}
 
 head(seurat@meta.data)
-table(seurat@meta.data$batch)
+table(seurat@meta.data$batch, seurat@meta.data$EXP_TIME)
 
-head(Features(seurat)) # I can't use percentagefeatureset because the features dont have unique names
+head(Features(seurat))
 
 ```
 
 # QC
+
 ## No filtering applied
+
+The gene names looking like LOC1248.... are actually all symbols of
+unnamed regions If you go through the list of genes seen, none of them
+are mitochondrial but they do have descriptions
+
+-   This data probably should be aligned on the matching genome
+
+-   Why are there no mitochondrial genes in the Hydra_05_v3 construct?
+
+Annotations can be found here:
+<https://www.ncbi.nlm.nih.gov/datasets/gene/GCF_022113875.1/>
+
+This means that I cannot regress out the variability that comes from the
+presence of mitochondrial genes since it seems like there aren't any. I
+can still regress out a possible batch effect though.
+
+```{r, echo=TRUE}
+
+head(seurat@assays[["originalexp"]]@meta.features) # none of the genes start with "mt"
+
+```
+
 ```{r, fig.width=8, fig.height=5}
 
 # QC and filtering -------------------------------------------------------------
-# calculate mitochondrial percentage
-# I think i might have to get a list with the feature id and cross with that to get mt percentages
-seurat$mitoPercent = PercentageFeatureSet(seurat, pattern='^MT-')
+
+# How I would usually calculate mitochondrial percentage
+# seurat$mitoPercent = PercentageFeatureSet(seurat, pattern='^mt-')
 # head(seurat@meta.data) # we now have the mitopercent added to the metadata
 
 # Just like Cell Ranger output, feature in the following results represents gene. 
 # nFeature_ is the number of genes detected in each cell. nCount_ is the 
 # total number of molecules detected within a cell.
+
 Idents(seurat) = seurat@meta.data$batch
 VlnPlot(seurat, features = c("nFeature_originalexp", "nCount_originalexp"), 
               ncol = 2, pt.size = 0.0001, split.by = 'batch')
@@ -103,16 +134,18 @@ FeatureScatter(seurat, feature1 = "nCount_originalexp", feature2 = "nFeature_ori
 
 ```
 
-0.91 for correlation between nFeature and nCount is a good score.
-As a reminder, nFeature is number of unique RNAs (gene that matched at least one UMI) found in a droplet and nCount is number of total molecules found in a droplet. Ideally they'd be exactly proportional?
-
+0.91 for correlation between nFeature and nCount is a good score. As a
+reminder, nFeature is number of unique RNAs (gene that matched at least
+one UMI) found in a droplet and nCount is number of total molecules
+found in a droplet. Ideally they'd be exactly proportional?
 
 ## Filtering applied
 
-Here, we filter away cells that have unique feature counts(genes) over 6000 
-or less than 200. Too many features could indicate a doublet too little might indicate an empty droplet
+Here, we filter away cells that have unique feature counts(genes) over
+6000 or less than 200. Too many features could indicate a doublet too
+little might indicate an empty droplet
 
-We should also filter away cells that have > 10% mitochondrial counts
+We should also filter away cells that have \> 10% mitochondrial counts
 
 ```{r, fig.width=8, fig.height=5}
 
@@ -130,124 +163,101 @@ FeatureScatter(seurat_f, feature1 = "nCount_originalexp", feature2 = "nFeature_o
 
 ```
 
-
 # Normalization/scaling
 
-SCTransform is better than using the standard (old) normalization pipeline because it does negative binomial regression (just as DESeq2 does for RNAseq) which does variance regression that nrormalization did not do>
+SCTransform is better than using the standard (old) normalization
+pipeline because it does negative binomial regression (just as DESeq2
+does for RNAseq) which does variance regression that normalization did
+not do\>
 
-"...omits the need for heuristic steps including pseudocount addition or log-transformation"
+"...omits the need for heuristic steps including pseudocount addition or
+log-transformation" -satijalab
 
-```{r, fig.width=8, fig.height=5}
+Interestingly, regressing out the batches lead to more distinct cell populations on the PCA.
 
-seurat_f = SCTransform(seurat_f, assay = "originalexp", verbose = T) # , vars.to.regress = "percent.mt"
+```{r, fig.width=4, fig.height=4, echo=FALSE}
+
+# seurat_r = SCTransform(seurat_f, assay = "originalexp", vars.to.regress = "batch") 
+# write_rds(seurat_r, "./data_output/interstitial/seurat_filtered_regressed.rds")
+seurat_r = readRDS("./data_output/interstitial/seurat_filtered_regressed.rds")
+
+seurat_f = SCTransform(seurat_f, assay = "originalexp") 
+# write_rds(seurat_r, "./data_output/interstitial/seurat_filtered.rds")
 
 # These are now standard steps in the Seurat workflow for visualization and clustering
 
-Idents(seurat) = seurat@meta.data$batch
-seurat_f <- RunPCA(seurat_f, features = VariableFeatures(object = seurat_f), verbose = T)
+Idents(seurat_f) = seurat_f@meta.data$batch
+seurat_f <- RunPCA(seurat_f, features = VariableFeatures(object = seurat_f))
+DimPlot(seurat_f, reduction = "pca")+
+  labs(title = "Not regressed")
 
-DimPlot(seurat_f, reduction = "pca")
+Idents(seurat_r) = seurat_r@meta.data$batch
+seurat_r <- RunPCA(seurat_r, features = VariableFeatures(object = seurat_r))
+DimPlot(seurat_r, reduction = "pca")+
+  labs(title = "Batch regressed")
+```
 
+```{r, fig.width=4, fig.height=8}
 
-seurat_f <- RunUMAP(seurat_f, dims = 1:30, verbose = T)
+DimHeatmap(seurat_r, dims = 1:30, cells = 500, balanced = TRUE)
+# So I'll run it on the first 28 pc
+```
+
+### Not regressed
+
+```{r, fig.width=6, fig.height=5}
+
+seurat_f <- RunUMAP(seurat_f, dims = 1:28, seed.use = 054057)
 DimPlot(seurat_f, reduction = "umap")
 
 
-seurat_f <- FindNeighbors(seurat_f, dims = 1:30, verbose = T)
+seurat_f <- FindNeighbors(seurat_f, dims = 1:28)
 
-seurat_f <- FindClusters(seurat_f, verbose = T)
-
-DimPlot(seurat_f, label = TRUE)
-
-```
+seurat_f <- FindClusters(seurat_f, resolution = 0.025)
+DimPlot(seurat_f, label = TRUE)+
+  labs(title = "Resolution = 0.025")
 
 
+seurat_f <- FindClusters(seurat_f, resolution = 0.1)
+DimPlot(seurat_f, label = TRUE)+
+  labs(title = "Resolution = 0.1")
 
 
-```{r, eval=F}
-
-
-
-
-## Scaling ---------------------------------------------------------------------
-
-# Next, we apply a linear transformation (‘scaling’) that is a standard pre-processing 
-# step prior to dimensional reduction techniques like PCA. The ScaleData() function:
-#   
-# shifts the expression of each gene, so that the mean expression across cells is 0
-# scales the expression of each gene, so that the variance across cells is 1
-# this step gives equal weight in downstream analyses, so that highly-expressed 
-# genes do not dominate the results of this are stored in seurat_f[["RNA"]]@scale.data
-
-all_genes <- rownames(seurat_f)
-seurat_f <- ScaleData(seurat_f, features = all_genes)
-
-# Linear dimensional reduction--------------------------------------------------
-
-seurat_f <- RunPCA(seurat_f, features = VariableFeatures(object = seurat_f))
-
-DimPlot(seurat_f, reduction = "pca")
-
-VizDimLoadings(seurat_f, dims = 1:2, reduction = "pca")
-
-# In particular DimHeatmap() allows for easy exploration of the primary sources 
-# of heterogeneity in a dataset, and can be useful when trying to decide which 
-# PCs to include for further downstream analyses. Both cells and features are 
-# ordered according to their PCA scores. Setting cells to a number plots the 
-# ‘extreme’ cells on both ends of the spectrum, which dramatically speeds 
-# plotting for large datasets. Though clearly a supervised analysis, we find 
-# this to be a valuable tool for exploring correlated feature sets.
-
-DimHeatmap(seurat_f, dims = 1, cells = 500, balanced = TRUE)
-
-# To overcome the extensive technical noise in any single feature for scRNA-seq 
-# data, Seurat clusters cells based on their PCA scores, with each PC essentially 
-# representing a ‘metafeature’ that combines information across a correlated 
-# feature set. The top principal components therefore represent a robust 
-# compression of the dataset. Here, we choose first 20 PCs.
-
-DimHeatmap(seurat_f, dims = 1:18, cells = 500, balanced = TRUE)
-DimHeatmap(seurat_f, dims = 1:9, cells = 500, balanced = TRUE)
-
-# Clustering the cells ---------------------------------------------------------
-
-seurat_f <- FindNeighbors(seurat_f, dims = 1:14, verbose = FALSE)
-seurat_f <- FindClusters(seurat_f, resolution = 0.5, verbose = FALSE)
-
-# Look at cluster IDs of the first 5 cells
-head(Idents(seurat_f), 5)
-
-
-# UMAP / tsneq -----------------------------------------------------------------
-
-seurat_f <- RunUMAP(seurat_f, dims = 1:20, verbose = FALSE)
-DimPlot(seurat_f, reduction = "umap", label = T)
-
-plot <- DimPlot(object = seurat_f)
-LabelClusters(plot = plot, id = 'ident')
-ggsave(paste0(lnames[i],"_UMAP_labelled.png"),last_plot(),"./figures/GSE144236/", dpi = 500 ,
-       device = "png")
-
-seurat_f <- RunTSNE(seurat_f, dims = 1:20, verbose = FALSE)
-DimPlot(seurat_f, reduction = "tsne")
-plot1 <- DimPlot(seurat_f, reduction = "tsne")
-LabelClusters(plot1, id = "ident")
-
-ggsave(paste0(lnames[i],"_tsne_labelled.png"),last_plot(),"./figures/GSE144236/", dpi = 500 ,
-       device = "png")
-
-# https://distill.pub/2016/misread-tsne/
-
-saveRDS(seurat_f, file = paste0("./data_output/GSE144236/",lnames[i],"_seurat_f_processed.rds"))
+seurat_f <- FindClusters(seurat_f, resolution = 0.3)
+DimPlot(seurat_f, label = TRUE)+
+  labs(title = "Resolution = 0.3")
 
 ```
 
 
+### Batch regressed
+
+```{r, fig.width=6, fig.height=5}
+
+seurat_r <- RunUMAP(seurat_r, dims = 1:28, seed.use = 054057)
+DimPlot(seurat_r, reduction = "umap")
 
 
+seurat_r <- FindNeighbors(seurat_r, dims = 1:28)
+
+seurat_r <- FindClusters(seurat_r, resolution = 0.025)
+DimPlot(seurat_r, label = TRUE)+
+  labs(title = "Resolution = 0.025")
 
 
+seurat_r <- FindClusters(seurat_r, resolution = 0.1)
+DimPlot(seurat_r, label = TRUE)+
+  labs(title = "Resolution = 0.1")
 
 
+seurat_r <- FindClusters(seurat_r, resolution = 0.3)
+DimPlot(seurat_r, label = TRUE)+
+  labs(title = "Resolution = 0.3")
 
+```
 
+# Session info
+
+```{r}
+sessionInfo()
+```

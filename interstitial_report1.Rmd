@@ -19,6 +19,7 @@ knitr::opts_chunk$set(fig.width=10, fig.height=8)
 
 library(tidyverse)
 library(Seurat)
+library(openxlsx)
 ```
 
 # Introduction
@@ -74,14 +75,39 @@ checked that all cited parameters could be found in it.
 
 seurat = readRDS("data/seurat.Rds")
 
+# Update the gene names in the count matrix
+# I updated the gene names when they were determined to be gene of interest 
+# in downstream analyses + cell type markers
+
+annot = read.xlsx("./data/mcbi_dataset_MH_annotated.xlsx")
+annot$Symbol[] <- lapply(annot$Symbol, function(x) sub("LOC", "", x, fixed = TRUE)) # removing the LOC prefix
+annot$Symbol_updated[] <- lapply(annot$Symbol_updated, function(x) sub("LOC", "", x, fixed = TRUE)) # removing the LOC prefix
+annot$Symbol = unlist(annot$Symbol) # unlisting it to look like a mormal column
+annot$Symbol_updated = unlist(annot$Symbol_updated)
+
+temp = data.frame(orig_gene = rownames(seurat))
+temp2 = data.frame(updated = annot$Symbol_updated,
+                   orig_gene = annot$Symbol) %>% 
+  filter(!duplicated(updated))
+
+# if temp2$updated is NA, fill with temp1
+
+temp3 = left_join(temp, temp2) # now temp3 is ordered like the genes in seurat
+
+temp3 = 
+  temp3 %>%
+  mutate(updated = coalesce(updated,orig_gene)) #works
+
+seurat@assays$originalexp@counts@Dimnames[[1]] <- temp3$updated
+seurat@assays$originalexp@data@Dimnames[[1]] <- temp3$updated
+seurat@assays$originalexp@meta.features = annot
+
 ```
 
 ```{r, echo=TRUE}
 
 head(seurat@meta.data)
 table(seurat@meta.data$batch, seurat@meta.data$EXP_TIME)
-
-head(Features(seurat))
 
 ```
 
@@ -177,12 +203,8 @@ Interestingly, regressing out the batches lead to more distinct cell populations
 
 ```{r, fig.width=4, fig.height=4, echo=FALSE}
 
-# seurat_r = SCTransform(seurat_f, assay = "originalexp", vars.to.regress = "batch") 
-# write_rds(seurat_r, "./data_output/interstitial/seurat_filtered_regressed.rds")
-seurat_r = readRDS("./data_output/interstitial/seurat_filtered_regressed.rds")
-
+seurat_r = SCTransform(seurat_f, assay = "originalexp", vars.to.regress = "batch") 
 seurat_f = SCTransform(seurat_f, assay = "originalexp") 
-# write_rds(seurat_r, "./data_output/interstitial/seurat_filtered.rds")
 
 # These are now standard steps in the Seurat workflow for visualization and clustering
 
@@ -254,6 +276,12 @@ seurat_r <- FindClusters(seurat_r, resolution = 0.3)
 DimPlot(seurat_r, label = TRUE)+
   labs(title = "Resolution = 0.3")
 
+```
+
+
+```{r, eval = FALSE}
+write_rds(seurat_f, "./data_output/interstitial/seurat_filtered.rds")
+write_rds(seurat_r, "./data_output/interstitial/seurat_filtered_regressed.rds")
 ```
 
 # Session info

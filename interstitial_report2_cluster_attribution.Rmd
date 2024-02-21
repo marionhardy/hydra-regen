@@ -15,7 +15,7 @@ editor_options:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(message = FALSE, cache = T, echo = FALSE, warning = F, cache.lazy = F)
-knitr::opts_chunk$set(fig.width=10, fig.height=8) 
+knitr::opts_chunk$set(fig.width=6, fig.height=4) 
 
 library(tidyverse)
 library(openxlsx)
@@ -24,8 +24,6 @@ library(scCustomize)
 ```
 
 # Introduction
-
-**This assumes you have run the** "interstitial_report1.Rmd" document and generated the seurat_f and seurat_r objects.
 
 Data from our collaborator Panagiotis rds file for a
 SingleCellExperiment object containing the single cell data for **the
@@ -97,6 +95,9 @@ Idents(seurat_r) = "EXP_TIME"
 seurat_r = RenameIdents(seurat_r, "REG_FOOT_t6" = "REG_FOOT_t06")  
 seurat_r = RenameIdents(seurat_r, "REG_HEAD_t6" = "REG_HEAD_t06")  
 
+Idents(seurat_f) = "EXP_TIME"
+seurat_f = RenameIdents(seurat_f, "REG_FOOT_t6" = "REG_FOOT_t06")  
+seurat_f = RenameIdents(seurat_f, "REG_HEAD_t6" = "REG_HEAD_t06")  
 ```
 
 # Subsetting by head/foot and timepoint for both regressed and unregressed
@@ -156,16 +157,16 @@ DimPlot(hhead, reduction = "umap", split.by = "EXP_TIME", pt.size = 2)
 ```
 
 There's much more time dependent-clustering happening here.
-I will move forward with the regressed data unless told otherwise.
+I will move forward with the non regressed data unless told otherwise because the clustering at higher resolutions do not indicate that later timepoints have their own clusters so regressing the batch might have induced artefact?
 
 # Cluster attribution
 ## UMAP at 0.025 resolution
 
 ```{r, fig.width=8, fig.height=6}
 
-Idents(seurat_r) = "SCT_snn_res.0.025"
+Idents(seurat_f) = "SCT_snn_res.0.025"
 
-DimPlot(seurat_r, label = TRUE)+
+DimPlot(seurat_f, label = TRUE)+
   labs(title = "Resolution = 0.025")
 
 ```
@@ -184,7 +185,7 @@ DimPlot(seurat_r, label = TRUE)+
 # Seurat lab suggested that DE analysis on obj@assay$RNA@data, which is normalized data (not scaled). So you are right, you should NormalizeData and then FindMarkers. However, Seurat 4 (not sure which small version exactly) starts to promotes DE analysis on obj@assay$SCT@scale.data, which is person residual. My experience is to try both and take the one that fits your goal because Seurat said both are not incorrect.
 
 # DO NOT RUN THIS COMMAND IF YOU'VE ALREADY DONE IT ONCE, THIS CHUNK IS EVAL = FALSE
-markers = FindAllMarkers(object = seurat_r,
+markers = FindAllMarkers(object = seurat_f,
                          logfc.threshold = 0.5,
                          assay = "SCT",
                          slot = "scale.data")
@@ -223,7 +224,7 @@ target = target[!duplicated(target$gene),]
 # so they become readable on a graph
 
 
-dp = DotPlot_scCustom(seurat_r, features = target$gene, 
+dp = DotPlot_scCustom(seurat_f, features = target$gene, 
                       colors_use = viridis_plasma_dark_high,
                       x_lab_rotate = T)+
   labs(title = "Dotplot for top 5 differentially expressed genes per cluster")
@@ -241,137 +242,41 @@ theo = read.xlsx("./data/mcbi_dataset_MH_annotated.xlsx", sheet = "celltype_mark
 # so they become readable on a graph
 
 
-dp = DotPlot_scCustom(seurat_r, features = theo$Symbol, 
+dp = DotPlot_scCustom(seurat_f, features = theo$Symbol, 
                       colors_use = viridis_plasma_dark_high,
                       x_lab_rotate = T)+
-  labs(title = "Dotplot for literature markers")
+  labs(title = "Dotplot for theoretical markers")
 
 dp
 
 ```
 
 
-```{r, fig.height=12, fig.width=8}
+```{r, fig.height=10, fig.width=8}
 
-Clustered_DotPlot(seurat_r, features = target$gene)
-
+p1 = Clustered_DotPlot(seurat_f, features = target$gene, k = 12)
+print(p1[[2]])
 ```
 
 
-```{r, eval=FALSE}
+```{r, fig.height=25, fig.width=15}
 
-target <- c("100215682") # its bcl-2
+target <- c("NSP4","midasin","mini-COL8","SP-D-like","FH20-X3","CAII",
+            "CELA3B","zinc-carboxypeptidase","ANO39","TYN1","H2A.2.2","nas2-X2",
+            "Lwamide-X1","DMRT1","TUBA4A-X1","DMRT1","HTRA3","polRF-X1",
+            "nop58-X1","OTP","MEP1A","rhammosyl-O-methyltransferase","hywnt3",
+            "PPOD1","ks1","hyAlx","ELAV2","POU4","MUC2") 
 
-FeaturePlot(object = seurat_r, 
+FeaturePlot(object = seurat_f, 
             features = target,
             reduction = "umap",
-            sort.cell = TRUE,
+            order = TRUE,
             min.cutoff = 'q10', 
             label = TRUE,
             repel = TRUE,
             pt.size = 0.75)
 
 ```
-
-
-```{r, eval=FALSE}
-## Juliette and Chim-Kei's questions--------------------------------------------
-
-# In which clusters are ROR2 etc expressed?
-
-target <- c("ROR2","ROR1","STAT1","STAT3","CTNNB1")
-
-FeaturePlot(object = seurat_r, 
-            features = target,
-            reduction = "tsne",
-            sort.cell = TRUE,
-            min.cutoff = 'q10', 
-            label = TRUE,
-            repel = TRUE)
-
-ggsave(paste0(lnames[i],"_ROR2_tSNE.png"),last_plot(),"./figures/GSE144236/", dpi = 500,
-       width = 9, height = 9,
-       device = "png")
-
-VlnPlot(object = seurat_r, features = target)
-
-ggsave(paste0(lnames[i],"_ROR2_violin_plot.png"),last_plot(),"./figures/GSE144236/", device = png, 
-       dpi = 500, width = 9, height = 5)
-
-
-# Markers for celltype identification
-
-celltype <- c("KRT1","KRT5","KRT10","KRT14","LYZ","HLA-DRB1", "HLA-DRA","HLA-DQB2",
-              "CD3D", "CD2","CD7","COL1A1", "COL1A2","LUM","MLANA", "DCT", "PMEL",
-              "TFF3", "CLDN5", "VWF", "IGLL5", "IGJ"," MS4A1", "CD79A","CD163",
-              "CD68","S100A8"," S100A9", "TREM1","CD1C", "CLEC10A","CLEC9A", "CADM1", 
-              "XCR1", "CD207", "CD1A", "S100B","AXL", "IGFBP5", "PPP1R14A","CLEC4C",
-              "IL3RA","CCR7", "CCL19","CD4","CD8")
-
-dp <- DotPlot(seurat_r, features = celltype, cols = c("red","blue"))
-dp
-
-# Do it with complexheatmap
-
-df <- dp$data
-
-# the matrix for the scaled expression 
-exp_mat<-df %>% 
-  select(-pct.exp, -avg.exp) %>%  
-  pivot_wider(names_from = id, values_from = avg.exp.scaled) %>% 
-  as.data.frame() 
-
-row.names(exp_mat) <- exp_mat$features.plot  
-exp_mat <- exp_mat[,-1] %>% as.matrix()
-
-head(exp_mat)
-
-## the matrix for the percentage of cells express a gene
-
-percent_mat<-df %>% 
-  select(-avg.exp, -avg.exp.scaled) %>%  
-  pivot_wider(names_from = id, values_from = pct.exp) %>% 
-  as.data.frame() 
-
-row.names(percent_mat) <- percent_mat$features.plot  
-percent_mat <- percent_mat[,-1] %>% as.matrix()
-
-head(percent_mat)
-
-Polychrome::swatch(viridis(20))
-
-## any value that is greater than 2 will be mapped to yellow
-col_fun = circlize::colorRamp2(c(-1, 0, 2), viridis(20)[c(1,10, 20)])
-
-
-cell_fun = function(j, i, x, y, w, h, fill){
-  grid.rect(x = x, y = y, width = w, height = h, 
-            gp = gpar(col = NA, fill = NA))
-  grid.circle(x=x,y=y,r= percent_mat[i, j]/100 * min(unit.c(w, h)),
-              gp = gpar(fill = col_fun(exp_mat[i, j]), col = NA))}
-
-reso <- 1200
-length <- 3.25*reso/72
-
-png(filename =paste0("./figures/GSE144236/heatmap",lnames[i],".png"))
-
-plot <- Heatmap(exp_mat,
-        heatmap_legend_param=list(title="expression"),
-        column_title = "clustered dotplot", 
-        col=col_fun,
-        rect_gp = gpar(type = "none"),
-        cell_fun = cell_fun,
-        row_names_gp = gpar(fontsize = 5),
-        row_km = 4,
-        border = "black")
-print(plot)
-dev.off() 
-
-```
-
-
-
-
 
 
 # Session info

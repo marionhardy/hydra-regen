@@ -1,0 +1,214 @@
+---
+title: "scRNAseq Interstitial cells"
+author: "Marion Hardy"
+date: "`r Sys.Date()`"
+output: 
+  html_document: 
+    toc: yes
+    theme: spacelab
+    highlight: monochrome
+editor_options: 
+  chunk_output_type: console
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE, cache = T, echo = FALSE, warning = F, cache.lazy = F)
+knitr::opts_chunk$set(fig.width=10, fig.height=8) 
+
+library(tidyverse)
+library(Seurat)
+library(openxlsx)
+```
+
+# Introduction
+
+**This explores the nneighbors parameter for the UMAP.**
+
+
+Data from our collaborator Panagiotis rds file for a
+SingleCellExperiment object containing the single cell data for **the
+interstitial cells** of *Hydra Vulgaris* during multiples stages of
+regeneration after bisection:
+
+<https://www.dropbox.com/scl/fi/dg76sigjnj5u6qr06xk79/sce_interstitial_Juliano.rds?rlkey=f0y3lqt0wdcwq652zisnrpf9t&dl=0>
+
+BUT they mapped it to *Hydra Magnipapillata (105)* "Drop-seq reads from
+15 libraries generated for Hydra vulgaris strain AEP were mapped to the
+2.0 genome assembly of closely related Hydra vulgaris strain 105
+(available at <https://research.nhgri.nih.gov/hydra/>) and processed
+using the Hydra 2.0 gene models. Strain Hydra vulgaris 105 was formerly
+referred to as Hydra magnipapillata 105."
+
+The coldata of the object contain cell annotation including
+
+-   quality metrics: nFeature nCount (not MT percentage interestingly)
+
+-   batch info: either 2869 (3162 barcodes), 3113 (10352 barcodes), 3271
+    (13279 barcodes), 3357 (3875 barcodes)
+
+-   originating experiments (head or foot regeneration)
+
+-   experimental time points
+
+-   pseudo-axis assignment (vals.axis ranging from 0-1, increasing in
+    the foot-tentacle direction)
+
+-   mitotic and apoptotic signatures indices from 0 to 1
+
+The rowdata contains gene annotation, using Entrez-gene identifiers. I
+have also noticed that in the sce objects there's
+
+-   PCA, tSNE and UMAP coordinates for reduced dimensions + corrected
+    for batch values
+
+-   assay metafeatures hold gene_id, product, gene, is.rib.prot.gene
+    (T/F), HypoMarkers (T/F), ccyle (T/F), apopt (T/F) etc
+
+I converted the sce objects 6.6gb into a seurat object 2.2 gb and
+checked that all cited parameters could be found in it.
+
+# Data loading
+
+```{r}
+
+# int = readRDS("./data/sce_interstitial_Juliano.rds")
+# seurat = as.Seurat(int, counts = "counts", data=NULL)
+
+seurat = readRDS("data/seurat.Rds")
+
+# Update the gene names in the count matrix
+# I updated the gene names when they were determined to be gene of interest 
+# in downstream analyses + cell type markers
+
+annot = read.xlsx("./data/mcbi_dataset_MH_annotated.xlsx")
+annot$Symbol[] <- lapply(annot$Symbol, function(x) sub("LOC", "", x, fixed = TRUE)) # removing the LOC prefix
+annot$Symbol_updated[] <- lapply(annot$Symbol_updated, function(x) sub("LOC", "", x, fixed = TRUE)) # removing the LOC prefix
+annot$Symbol = unlist(annot$Symbol) # unlisting it to look like a mormal column
+annot$Symbol_updated = unlist(annot$Symbol_updated)
+
+temp = data.frame(orig_gene = rownames(seurat))
+temp2 = data.frame(updated = annot$Symbol_updated,
+                   orig_gene = annot$Symbol) %>% 
+  filter(!duplicated(updated),!duplicated(orig_gene))
+
+# if temp2$updated is NA, fill with temp
+
+temp3 = left_join(temp, temp2) # now temp3 is ordered like the genes in seurat
+
+temp3 = 
+  temp3 %>%
+  mutate(updated = coalesce(updated,orig_gene)) #works
+
+seurat@assays$originalexp@counts@Dimnames[[1]] <- temp3$updated
+seurat@assays$originalexp@data@Dimnames[[1]] <- temp3$updated
+seurat@assays$originalexp@meta.features = annot
+
+```
+
+```{r, echo=TRUE}
+
+head(seurat@meta.data)
+table(seurat@meta.data$batch, seurat@meta.data$EXP_TIME)
+
+```
+
+# QC
+
+## No filtering applied
+
+The gene names looking like LOC1248.... are actually all symbols of
+unnamed regions If you go through the list of genes seen, none of them
+are mitochondrial but they do have descriptions
+
+-   This data probably should be aligned on the matching genome
+
+-   Why are there no mitochondrial genes in the Hydra_05_v3 construct?
+
+Annotations can be found here:
+<https://www.ncbi.nlm.nih.gov/datasets/gene/GCF_022113875.1/>
+
+This means that I cannot regress out the variability that comes from the
+presence of mitochondrial genes since it seems like there aren't any. I
+can still regress out a possible batch effect though.
+
+
+```{r, fig.width=8, fig.height=5}
+
+# Here, we filter away cells that have unique feature counts(genes) over 6000 
+# or less than 200. Too many features could indicate a doublet too little might indicate an empty droplet
+# We should also filter away cells that have > 10% mitochondrial counts
+
+seurat_f = subset(seurat, subset = nFeature_originalexp > 200 & nFeature_originalexp < 6000)
+
+```
+
+# Checking optimal number of neighbors
+
+We want to check if these very thin clusters are true population sor just the effect of unoptimized number of neighbors during UMAP projection. 
+
+## PCA
+
+```{r, fig.width=4, fig.height=4, echo=FALSE}
+
+seurat_f = SCTransform(seurat_f, assay = "originalexp", verbose = F) 
+
+# These are now standard steps in the Seurat workflow for visualization and clustering
+
+Idents(seurat_f) = seurat_f@meta.data$batch
+seurat_f <- RunPCA(seurat_f, features = VariableFeatures(object = seurat_f))
+DimPlot(seurat_f, reduction = "pca")+
+  labs(title = "PCA with batch legend")
+
+```
+
+## UMAP
+
+```{r, fig.width=12, fig.height=5}
+
+Idents(seurat_f) = seurat_f@meta.data$EXP_TIME
+
+seurat_f <- RunUMAP(seurat_f, dims = 1:28, seed.use = 054057, n.neighbors = 5)
+p1 = DimPlot(seurat_f, reduction = "umap")+
+  labs(title = "n neighbors = 5")
+
+seurat_f <- RunUMAP(seurat_f, dims = 1:28, seed.use = 054057, n.neighbors = 10)
+p2 = DimPlot(seurat_f, reduction = "umap")+
+  labs(title = "n neighbors = 10")
+
+seurat_f <- RunUMAP(seurat_f, dims = 1:28, seed.use = 054057, n.neighbors = 50)
+p3 = DimPlot(seurat_f, reduction = "umap")+
+  labs(title = "n neighbors = 50")
+
+seurat_f <- RunUMAP(seurat_f, dims = 1:28, seed.use = 054057, n.neighbors = 100)
+p4 = DimPlot(seurat_f, reduction = "umap")+
+  labs(title = "n neighbors = 100")
+
+
+p1+p2
+p3+p4
+
+```
+
+```{r, fig.width=7, fig.height=5}
+seurat_f <- FindNeighbors(seurat_f, dims = 1:28, n.neighbors = 50)
+
+seurat_f <- FindClusters(seurat_f, resolution = 0.025)
+DimPlot(seurat_f, label = TRUE)+
+  labs(title = "Resolution = 0.025")
+
+```
+
+
+```{r, eval = FALSE}
+write_rds(seurat_f, "./data_output/interstitial/seurat_filtered.rds")
+```
+
+Here's what, based on the PCA we **are** expecting a central cluster tapering off into four different populations + another separate cluster. And that's what we see whatever the number of neighbors. 
+
+# Session info
+
+```{r}
+sessionInfo()
+```

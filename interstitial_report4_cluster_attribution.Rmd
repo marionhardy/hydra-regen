@@ -1,0 +1,253 @@
+---
+title: "scRNAseq Interstitial cells : cluster attribution"
+author: "Marion Hardy"
+date: "`r Sys.Date()`"
+output: 
+  html_document: 
+    toc: yes
+    theme: spacelab
+    highlight: monochrome
+editor_options: 
+  chunk_output_type: console
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE, cache = T, echo = FALSE, warning = F, cache.lazy = F)
+knitr::opts_chunk$set(fig.width=6, fig.height=4) 
+
+library(tidyverse)
+library(openxlsx)
+library(Seurat)
+library(scCustomize)
+```
+
+# Introduction
+
+Data from our collaborator Panagiotis rds file for a
+SingleCellExperiment object containing the single cell data for **the
+interstitial cells** of *Hydra Vulgaris* during multiples stages of
+regeneration after bisection:
+
+<https://www.dropbox.com/scl/fi/dg76sigjnj5u6qr06xk79/sce_interstitial_Juliano.rds?rlkey=f0y3lqt0wdcwq652zisnrpf9t&dl=0>
+
+BUT they mapped it to *Hydra Magnipapillata (105)* "Drop-seq reads from
+15 libraries generated for Hydra vulgaris strain AEP were mapped to the
+2.0 genome assembly of closely related Hydra vulgaris strain 105
+(available at <https://research.nhgri.nih.gov/hydra/>) and processed
+using the Hydra 2.0 gene models. Strain Hydra vulgaris 105 was formerly
+referred to as Hydra magnipapillata 105."
+
+The coldata of the object contain cell annotation including
+
+-   quality metrics: nFeature nCount (not MT percentage interestingly)
+
+-   batch info: either 2869 (3162 barcodes), 3113 (10352 barcodes), 3271
+    (13279 barcodes), 3357 (3875 barcodes)
+
+-   originating experiments (head or foot regeneration)
+
+-   experimental time points
+
+-   pseudo-axis assignment (vals.axis ranging from 0-1, increasing in
+    the foot-tentacle direction)
+
+-   mitotic and apoptotic signatures indices from 0 to 1
+
+The rowdata contains gene annotation, using Entrez-gene identifiers. I
+have also noticed that in the sce objects there's
+
+-   PCA, tSNE and UMAP coordinates for reduced dimensions + corrected
+    for batch values
+
+-   assay metafeatures hold gene_id, product, gene, is.rib.prot.gene
+    (T/F), HypoMarkers (T/F), ccyle (T/F), apopt (T/F) etc
+
+I converted the sce objects 6.6gb into a seurat object 2.2 gb and
+checked that all cited parameters could be found in it.
+
+# Data loading
+
+Which dataset set should I use? Batch regressed looks weird but might be interesting depending on how timepoints end up clustering...
+
+Let's make a UMAP with timepoints as labels.
+I am using the scaled and batch regressed data.
+
+```{r}
+# seurat objects
+seurat_f = readRDS("data_output/interstitial/seurat_filtered.rds")
+
+# 105 genome annotations
+annot = read.xlsx("./data/mcbi_dataset_MH_annotated.xlsx")
+annot$Symbol_updated = as.character(annot$Symbol_updated)
+
+
+# set up to split the object per head or foot
+footcond = c("REG_FOOT_t0","REG_FOOT_t6","REG_FOOT_t12","REG_FOOT_t24",
+             "REG_FOOT_t48","REG_FOOT_t96")
+seurat_f$axis <- ifelse(test = seurat_f$EXP_TIME %in% footcond, yes = "Foot", no = "Head")
+
+
+```
+
+```{r}
+# changing labeled time from t6 to t06 so thqt it orders properly in the plots
+
+Idents(seurat_f) = "EXP_TIME"
+seurat_f = RenameIdents(seurat_f, "REG_FOOT_t6" = "REG_FOOT_t06")
+seurat_f = RenameIdents(seurat_f, "REG_HEAD_t6" = "REG_HEAD_t06")
+```
+
+
+# Subsetting by head/foot and timepoint for both regressed and unregressed
+## Not batch regressed
+
+```{r}
+
+Idents(seurat_f) = "EXP_TIME"
+DimPlot(seurat_f, label = FALSE)
+
+# Creating the head and foot data subset
+hfootf = subset(seurat_f, subset = EXP == "REG_FOOT")
+hheadf = subset(seurat_f, subset = EXP == "REG_HEAD")
+
+```
+
+```{r, fig.width=30, fig.height=6}
+
+# Plotting conditions separately
+
+Idents(hfootf) = hfootf@meta.data$SCT_snn_res.0.025
+Idents(hheadf) = hheadf@meta.data$SCT_snn_res.0.025
+
+DimPlot(hfootf, reduction = "umap", split.by = "EXP_TIME", pt.size = 2)
+
+DimPlot(hheadf, reduction = "umap", split.by = "EXP_TIME", pt.size = 2)
+
+```
+
+# Cluster attribution
+## UMAP at 0.025 resolution
+
+```{r, fig.width=8, fig.height=6}
+
+Idents(seurat_f) = "SCT_snn_res.0.025"
+
+DimPlot(seurat_f, label = TRUE)+
+  labs(title = "Resolution = 0.025")
+
+```
+
+## Finding markers per clusters
+
+```{r, eval=FALSE} 
+# Find markers for each clusters------------------------------------------------
+
+# With the ` FindAllMarkers()` function we are comparing 
+# each cluster against all other clusters to identify potential marker genes. 
+# The cells in each cluster are treated as replicates, and essentially a 
+# differential expression analysis is performed with some statistical test.
+# By default, it's a wilcoxon rank sum test
+
+# Seurat lab suggested that DE analysis on obj@assay$RNA@data, which is normalized data (not scaled). So you are right, you should NormalizeData and then FindMarkers. However, Seurat 4 (not sure which small version exactly) starts to promotes DE analysis on obj@assay$SCT@scale.data, which is person residual. My experience is to try both and take the one that fits your goal because Seurat said both are not incorrect.
+
+# DO NOT RUN THIS COMMAND IF YOU'VE ALREADY DONE IT ONCE, THIS CHUNK IS EVAL = FALSE
+markers = FindAllMarkers(object = seurat_f,
+                         logfc.threshold = 0.5,
+                         assay = "SCT",
+                         slot = "scale.data")
+
+```
+
+```{r}
+markers = read.csv("./data_output/interstitial/markers_diff_per_cluster.csv")%>% 
+  filter(p_val_adj < 0.05)
+
+# write.csv(markers, "./data_output/interstitial/markers_diff_per_cluster.csv")
+
+markers$gene = as.character(markers$gene)
+```
+
+### Markers that seem specific to cluster identity.
+
+```{r}
+head(markers)
+```
+
+```{r, , fig.width=15, fig.height=10}
+
+target = markers %>% 
+  group_by(cluster) %>%
+  top_n(n = 5, wt = avg_diff) 
+
+target = 
+  target %>% 
+  filter(!duplicated(gene))
+
+target = target[!duplicated(target$gene),] 
+
+
+# Sooo turns out i'm gonna have to manually give these important genes symbols
+# so they become readable on a graph
+
+
+dp = DotPlot_scCustom(seurat_f, features = target$gene, 
+                      colors_use = viridis_plasma_dark_high,
+                      x_lab_rotate = T)+
+  labs(title = "Dotplot for top 5 differentially expressed genes per cluster")
+
+dp
+
+```
+
+### Theoretical markers
+
+```{r, warning=TRUE, fig.width=5, fig.height=4}
+
+theo = read.xlsx("./data/mcbi_dataset_MH_annotated.xlsx", sheet = "celltype_markers")
+
+dp = DotPlot_scCustom(seurat_f, features = theo$Symbol, 
+                      colors_use = viridis_plasma_dark_high,
+                      x_lab_rotate = T)+
+  labs(title = "Dotplot for theoretical markers")
+
+dp
+
+```
+
+### Combined
+
+```{r, fig.height=10, fig.width=8}
+
+p1 = Clustered_DotPlot(seurat_f, features = target$gene, k = 12)
+# print(p1[[2]])
+```
+
+
+```{r, fig.height=25, fig.width=15}
+
+target <- c("NSP4","midasin","mini-COL8","SP-D-like","FH20-X3","CAII",
+            "CELA3B","zinc-carboxypeptidase","ANO39","TYN1","H2A.2.2","nas2-X2",
+            "Lwamide-X1","DMRT1","TUBA4A-X1","DMRT1","HTRA3","polRF-X1",
+            "nop58-X1","OTP","MEP1A","rhammosyl-O-methyltransferase","hywnt3",
+            "PPOD1","ks1","hyAlx","ELAV2","POU4","MUC2", "ec3", "grm1","myc",
+            "myc1","wnt3","ec2","ec1B","ec4","ec1A","en1","en1_NDF1_DANRE") 
+
+
+FeaturePlot(object = seurat_f, 
+            features = target,
+            reduction = "umap",
+            order = TRUE,
+            min.cutoff = 'q10', 
+            label = TRUE,
+            repel = TRUE,
+            pt.size = 0.75)
+
+```
+
+# Session info
+
+```{r}
+sessionInfo()
+```

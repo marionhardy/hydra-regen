@@ -73,12 +73,12 @@ Finding markers per clusters
 -    DotPlot of theoretical markers for neurons and other interstitial cells
 -    UMAPs of names markers (excludes uncharacterized transcripts)
 
-## Interstitial_report2
+## Interstitial_report3
 
 Contains the same thing as the first report but explores the n_neighbors parameter
 Does not contain the regressed data as the batch and timepoints variables overlapped weirdly in the experimental design
 
-## Interstitial_report3_cluster_attribution
+## Interstitial_report4_cluster_attribution
 
 Contains the same things as report2 BUT
 -    more markers

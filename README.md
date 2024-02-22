@@ -87,7 +87,7 @@ Contains the same things as report2 BUT
 
 ## Nota Bene
 
-The 102 genome is very fractionated and is poorly annotated compared to current available constructs.
+The 105 genome is very fractionated and is poorly annotated compared to current available constructs.
 I had to manually cross HVAEP1 genome for the previously established celltype markers with the 105 genome.
 I did that by taking the HVAEP1 fasta file, blasting every transcript and finding if there's a >80% match for a transcript in 105. 
 Then I went back to the annotation file and changed the name of the transcript in a duplicated Symbol column called Symbol_updated.

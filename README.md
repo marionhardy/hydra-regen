@@ -92,7 +92,7 @@ I had to manually cross HVAEP1 genome for the previously established celltype ma
 I did that by taking the HVAEP1 fasta file, blasting every established cell type marker transcript and finding if there's a >80% match for a transcript in 105. 
 Then I went back to the annotation file and changed the name of the transcript in a duplicated Symbol column called Symbol_updated.
 I also manually checked annotated genes that had a transcript in 105 but the ID didn't reflect it.
-This is stored in an excel docuemnt called "mcbi_dataset_MH_annotated.xlsx"
+This is stored in an excel document called "mcbi_dataset_MH_annotated.xlsx"
 
 
 

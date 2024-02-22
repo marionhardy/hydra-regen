@@ -42,8 +42,8 @@ I converted the sce objects into a seurat object and did data processing + analy
 
 -    interstitial_report1
 -    interstitial_report2_cluster_attribution
--    interstitial_report2
--    interstitial_report3_cluster_attribution
+-    interstitial_report3
+-    interstitial_report43_cluster_attribution
 
 ## Interstitial_report1
 

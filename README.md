@@ -1,4 +1,4 @@
-# Transcription factors in *Hydra Vulgaris* regeneration over 96 hours
+# Interstitial cells transcription factors in *Hydra Vulgaris* regeneration over 96 hours
 
 Rotation in Celina Juliano's lab studying the timeline of hydra regeneration after bisection using scRNAseq obtained from Panagiotis Papasaikas from the Tsiairis lab.
 
@@ -6,8 +6,8 @@ Rotation in Celina Juliano's lab studying the timeline of hydra regeneration aft
 
 Data from our collaborator Panagiotis rds file for a SingleCellExperiment object containing the single cell data for **the interstitial cells** of *Hydra Vulgaris* during multiples stages of regeneration after bisection
 
-This data was mapped to *Hydra Magnipapillata (105)* "Drop-seq reads from 15 libraries generated for Hydra vulgaris strain AEP were mapped to the 2.0 genome assembly of closely related Hydra vulgaris strain 105
-(available at <https://research.nhgri.nih.gov/hydra/>) and processed using the Hydra 2.0 gene models. Strain Hydra vulgaris 105 was formerly referred to as Hydra magnipapillata 105."
+This data was mapped to *Hydra Magnipapillata (102)* "Drop-seq reads from 15 libraries generated for Hydra vulgaris strain AEP were mapped to the 2.0 genome assembly of closely related Hydra vulgaris strain 105
+(available at <https://research.nhgri.nih.gov/hydra/>) and processed using the Hydra 2.0 gene models. Strain Hydra vulgaris 105 was formerly referred to as Hydra magnipapillata 102."
 
 The sce object contains only the interstitial cells that were selected by Panagiotis using the ..... markers
 
@@ -48,16 +48,30 @@ I converted the sce objects into a seurat object and did data processing + analy
 ### Interstitial_report1
 
 Contains the exploration of the data (batches, features, metadata etc)
+
 Quality check based on nFeatures and nCounts (no mitochondrial genes in the 105 genome)
+
 Scaling using SCTransform() and regression (or not) of the batch variable
+
 Selection of the first 28 dimensions for UMAP projection
+
 PCA
+
 UMAP
+
 Clustering at different resolutions (0.025, 0.1, 0.3)
 
 ### Interstitial_report2_cluster_attribution
 
-
+Subsetting by head/foot and timepoint for both regressed and unregressed
+Not batch regressed
+Batch regressed
+Cluster attribution
+UMAP at 0.025 resolution
+Finding markers per clusters
+-    DotPlot of top 5 differentially expressed markers per clusters
+-    DotPlot of theoretical markers for neurons and other interstitial cells
+-    UMAPs of names markers (excludes uncharacterized transcripts)
 
 ### Interstitial_report2
 
@@ -66,9 +80,18 @@ Does not contain the regressed data as the batch and timepoints variables overla
 
 ### Interstitial_report3_cluster_attribution
 
+Contains the same things as report2 BUT
+-    more markers
+-    plots using the regressed data were discarded
 
 
+### Nota Bene
 
+The 102 genome is very fractionated and is poorly annotated compared to current available constructs.
+I had to manually cross HVAEP1 genome for the previously established celltype markers with the 102 genome.
+I did that by taking the HVAEP1 fasta file, blasting every transcript and finding if there's a >80% match for a transcript in 102.
+I also manually checked annotated genes that had a transcript in 102 but the ID didn't reflect it.
+This is stored in an excel docuemnt called "mcbi_dataset_MH_annotated.xlsx"
 
 
 

@@ -45,7 +45,7 @@ I converted the sce objects into a seurat object and did data processing + analy
 -    interstitial_report2
 -    interstitial_report3_cluster_attribution
 
-### Interstitial_report1
+## Interstitial_report1
 
 Contains the exploration of the data (batches, features, metadata etc)
 
@@ -61,7 +61,7 @@ UMAP
 
 Clustering at different resolutions (0.025, 0.1, 0.3)
 
-### Interstitial_report2_cluster_attribution
+## Interstitial_report2_cluster_attribution
 
 Subsetting by head/foot and timepoint for both regressed and unregressed
 Not batch regressed
@@ -73,19 +73,19 @@ Finding markers per clusters
 -    DotPlot of theoretical markers for neurons and other interstitial cells
 -    UMAPs of names markers (excludes uncharacterized transcripts)
 
-### Interstitial_report2
+## Interstitial_report2
 
 Contains the same thing as the first report but explores the n_neighbors parameter
 Does not contain the regressed data as the batch and timepoints variables overlapped weirdly in the experimental design
 
-### Interstitial_report3_cluster_attribution
+## Interstitial_report3_cluster_attribution
 
 Contains the same things as report2 BUT
 -    more markers
 -    plots using the regressed data were discarded
 
 
-### Nota Bene
+## Nota Bene
 
 The 102 genome is very fractionated and is poorly annotated compared to current available constructs.
 I had to manually cross HVAEP1 genome for the previously established celltype markers with the 102 genome.

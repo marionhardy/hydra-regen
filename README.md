@@ -89,7 +89,8 @@ Contains the same things as report2 BUT
 
 The 102 genome is very fractionated and is poorly annotated compared to current available constructs.
 I had to manually cross HVAEP1 genome for the previously established celltype markers with the 102 genome.
-I did that by taking the HVAEP1 fasta file, blasting every transcript and finding if there's a >80% match for a transcript in 102.
+I did that by taking the HVAEP1 fasta file, blasting every transcript and finding if there's a >80% match for a transcript in 102. 
+Then I went back to the annotation file and changed the name of the transcript in a duplicated Symbol column called Symbol_updated.
 I also manually checked annotated genes that had a transcript in 102 but the ID didn't reflect it.
 This is stored in an excel docuemnt called "mcbi_dataset_MH_annotated.xlsx"
 

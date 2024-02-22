@@ -6,8 +6,8 @@ Rotation in Celina Juliano's lab studying the timeline of hydra regeneration aft
 
 Data from our collaborator Panagiotis rds file for a SingleCellExperiment object containing the single cell data for **the interstitial cells** of *Hydra Vulgaris* during multiples stages of regeneration after bisection
 
-This data was mapped to *Hydra Magnipapillata (102)* "Drop-seq reads from 15 libraries generated for Hydra vulgaris strain AEP were mapped to the 2.0 genome assembly of closely related Hydra vulgaris strain 105
-(available at <https://research.nhgri.nih.gov/hydra/>) and processed using the Hydra 2.0 gene models. Strain Hydra vulgaris 105 was formerly referred to as Hydra magnipapillata 102."
+This data was mapped to *Hydra Magnipapillata (105)* "Drop-seq reads from 15 libraries generated for Hydra vulgaris strain AEP were mapped to the 2.0 genome assembly of closely related Hydra vulgaris strain 105
+(available at <https://research.nhgri.nih.gov/hydra/>) and processed using the Hydra 2.0 gene models. Strain Hydra vulgaris 105 was formerly referred to as Hydra magnipapillata 105."
 
 The sce object contains only the interstitial cells that were selected by Panagiotis using the ..... markers
 
@@ -88,10 +88,10 @@ Contains the same things as report2 BUT
 ## Nota Bene
 
 The 102 genome is very fractionated and is poorly annotated compared to current available constructs.
-I had to manually cross HVAEP1 genome for the previously established celltype markers with the 102 genome.
-I did that by taking the HVAEP1 fasta file, blasting every transcript and finding if there's a >80% match for a transcript in 102. 
+I had to manually cross HVAEP1 genome for the previously established celltype markers with the 105 genome.
+I did that by taking the HVAEP1 fasta file, blasting every transcript and finding if there's a >80% match for a transcript in 105. 
 Then I went back to the annotation file and changed the name of the transcript in a duplicated Symbol column called Symbol_updated.
-I also manually checked annotated genes that had a transcript in 102 but the ID didn't reflect it.
+I also manually checked annotated genes that had a transcript in 105 but the ID didn't reflect it.
 This is stored in an excel docuemnt called "mcbi_dataset_MH_annotated.xlsx"
 
 

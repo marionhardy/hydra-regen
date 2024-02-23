@@ -121,9 +121,9 @@ hheadf = subset(seurat_f, subset = EXP == "REG_HEAD")
 Idents(hfootf) = hfootf@meta.data$SCT_snn_res.0.025
 Idents(hheadf) = hheadf@meta.data$SCT_snn_res.0.025
 
-DimPlot(hfootf, reduction = "umap", split.by = "EXP_TIME", pt.size = 2)
+DimPlot(hfootf, reduction = "umap", split.by = "EXP_TIME", pt.size = 1)
 
-DimPlot(hheadf, reduction = "umap", split.by = "EXP_TIME", pt.size = 2)
+DimPlot(hheadf, reduction = "umap", split.by = "EXP_TIME", pt.size = 1)
 
 ```
 
@@ -244,6 +244,110 @@ FeaturePlot(object = seurat_f,
             repel = TRUE,
             pt.size = 0.75)
 
+```
+
+## Cluster labeling
+
+Cell type attribution was obtained through cross validation of my markers with the https://research.nhgri.nih.gov/HydraAEP/SingleCellBrowser/ database.
+
+```{r, echo=TRUE}
+
+seurat_f@meta.data <-
+  seurat_f@meta.data %>%
+  mutate(attr_clusters=
+           ifelse(seurat_clusters == "0", "ISC/earlyNem",
+           ifelse(seurat_clusters == "1", "StenoNB", # based on midasin
+           ifelse(seurat_clusters == "2", "NB.1",
+           ifelse(seurat_clusters == "3", "GranG/ZymoG", # based on G009335 zinc carboxipeptidase
+           ifelse(seurat_clusters == "4", "NB.2",
+           ifelse(seurat_clusters == "5", "unknown",
+           ifelse(seurat_clusters == "6", "ec1A/B", 
+           ifelse(seurat_clusters == "7", "Ec3N/En1N",
+           ifelse(seurat_clusters == "8", "IsoNB", # based on CAII
+           ifelse(seurat_clusters == "9", "ec2",
+           ifelse(seurat_clusters == "10", "Ec3N/En1N", # based on Lwamide G018128
+           ifelse(seurat_clusters == "11", "OTP+MEP1A+",
+           ifelse(seurat_clusters == "12", "ec4",
+           NA))))))))))))))
+
+# midasin   G006924 StenoNB I_ISC I_FemGC
+# zinc carboxipeptidase  G009335 GranG ZymoG
+# Lwamide G018128 Ec3N En1N
+# CAII G023665 isoNB
+# MEP1A   G019984 En_tentacle En_Foot
+# OTP G025356 En_Head Ec_Head I_GranGI
+
+```
+
+
+```{r, fig.width=8, fig.height=6}
+
+Idents(seurat_f) = "attr_clusters"
+
+DimPlot(seurat_f, label = TRUE)+
+  labs(title = "Attributed clusters")
+
+```
+
+# Transcription marker expression
+
+Celina provided me with a list of markers of interest that I tried to find in the 105 genome.
+
+```{r}
+
+tr = read.xlsx("./data/mcbi_dataset_MH_annotated.xlsx", sheet = "transcription")
+head(tr)
+```
+
+```{r}
+
+uh = DotPlot_scCustom(seurat_f, features = tr$Symbol_updated, 
+                      colors_use = viridis_plasma_dark_high,
+                      x_lab_rotate = T)+
+  labs(title = "Dotplot for theoretical markers")
+
+uh
+```
+
+```{r, fig.height=10, fig.width=15}
+
+FeaturePlot(object = seurat_f, 
+            features = tr$Symbol_updated,
+            reduction = "umap",
+            order = TRUE,
+            min.cutoff = 'q10', 
+            label = TRUE,
+            repel = TRUE,
+            pt.size = 0.75)
+
+```
+
+```{r}
+
+Idents(seurat_f) = "EXP_TIME"
+DimPlot(seurat_f, label = FALSE)
+
+# Creating the head and foot data subset
+hfootf = subset(seurat_f, subset = EXP == "REG_FOOT")
+hheadf = subset(seurat_f, subset = EXP == "REG_HEAD")
+
+```
+
+```{r, fig.width=30, fig.height=6, eval = F}
+
+# Plotting conditions separately
+
+Idents(hfootf) = hfootf@meta.data$attr_clusters
+Idents(hheadf) = hheadf@meta.data$attr_clusters
+
+DimPlot(hfootf, reduction = "umap", split.by = "EXP_TIME", pt.size = 1)
+
+DimPlot(hheadf, reduction = "umap", split.by = "EXP_TIME", pt.size = 1)
+
+```
+
+```{r, eval = FALSE}
+write_rds(seurat_f, "./data_output/interstitial/seurat_filtered.rds")
 ```
 
 # Session info

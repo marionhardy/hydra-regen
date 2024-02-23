@@ -84,6 +84,8 @@ Does not contain the regressed data as the batch and timepoints variables overla
 Contains the same things as report2 BUT
 -    more markers
 -    plots using the regressed data were discarded
+-    clusters were attributed
+-    we now have a first glimpse at transcription factor expression
 
 
 ## Nota Bene

@@ -176,7 +176,7 @@ FeaturePlot(object = seurat_f,
 
 # Pseudo-axis
 
-```{r}
+```{r, eval=FALSE}
 
 Idents(seurat_f) = "vals.axis_k25"
 
@@ -190,22 +190,26 @@ DimPlot(seurat_f, label = TRUE)+
 I am scaling down to see if I can get genes with interesting patterns between stem cells -> neurons
 I am trying to see regulatory genes appear with the appearing head neuron cluster...
 
-```{r, eval=FALSE}
+```{r}
 
 neurons = subset(seurat_f, subset = attr_clusters %in% c("ISC/earlyNem","ec1A/B",
                                                          "ec2","ec4","Ec3N/En1N"))  
 Idents(neurons) = "attr_clusters"
 
+
+```
+
+```{r, eval=FALSE}
+
 DimPlot(neurons, label = TRUE)+
   labs(title = "Pseudo-axis values")
-
 ```
 
 ## Reprocessing for re-clustering
 
 ```{r}
 
-neurons <- RunPCA(neurons, features = VariableFeatures(object = neurons))
+neurons <- RunPCA(neurons)
 DimPlot(neurons, reduction = "pca")
 
 neurons <- RunUMAP(neurons, dims = 1:28, seed.use = 054057)

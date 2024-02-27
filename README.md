@@ -22,7 +22,7 @@ The coldata of the object contain cell annotation including
 
 -   experimental time points
 
--   pseudo-axis assignment (vals.axis ranging from 0-1, increasing in
+-   pseudo-axis assignment (vals.axis ranging from -1 to 1, increasing in
     the foot-tentacle direction)
 
 -   mitotic and apoptotic signatures indices from 0 to 1

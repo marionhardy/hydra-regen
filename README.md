@@ -80,7 +80,7 @@ Contains the same things as report2 BUT
 -    clusters were attributed
 -    we now have a first glimpse at transcription factor expression
 
-![image](figures/interstitial/attr_clusters_all4x3.png)
+![image](figures/interstitial/attr_clusters_all.png)
 
 ## Interstitial_report5_transcription_timeline
 

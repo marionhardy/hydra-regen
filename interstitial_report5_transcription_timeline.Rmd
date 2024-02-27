@@ -1,0 +1,266 @@
+---
+title: "scRNAseq Interstitial cells : What happens over time?"
+author: "Marion Hardy"
+date: "`r Sys.Date()`"
+output: 
+  html_document: 
+    toc: yes
+    theme: spacelab
+    highlight: monochrome
+editor_options: 
+  chunk_output_type: console
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE, cache = T, echo = FALSE, warning = F, cache.lazy = F)
+knitr::opts_chunk$set(fig.width=6, fig.height=4) 
+
+library(tidyverse)
+library(openxlsx)
+library(Seurat)
+library(scCustomize)
+```
+
+# Introduction
+
+Data from our collaborator Panagiotis rds file for a
+SingleCellExperiment object containing the single cell data for **the
+interstitial cells** of *Hydra Vulgaris* during multiples stages of
+regeneration after bisection:
+
+<https://www.dropbox.com/scl/fi/dg76sigjnj5u6qr06xk79/sce_interstitial_Juliano.rds?rlkey=f0y3lqt0wdcwq652zisnrpf9t&dl=0>
+
+BUT they mapped it to *Hydra Magnipapillata (102)* "Drop-seq reads from
+15 libraries generated for Hydra vulgaris strain AEP were mapped to the
+2.0 genome assembly of closely related Hydra vulgaris strain 102
+(available at <https://research.nhgri.nih.gov/hydra/>) and processed
+using the Hydra 2.0 gene models. Strain Hydra vulgaris 102 was formerly
+referred to as Hydra magnipapillata."
+
+The coldata of the object contain cell annotation including
+
+-   quality metrics: nFeature nCount (not MT percentage interestingly)
+
+-   batch info: either 2869 (3162 barcodes), 3113 (10352 barcodes), 3271
+    (13279 barcodes), 3357 (3875 barcodes)
+
+-   originating experiments (head or foot regeneration)
+
+-   experimental time points
+
+-   pseudo-axis assignment (vals.axis ranging from 0-1, increasing in
+    the foot-tentacle direction)
+
+-   mitotic and apoptotic signatures indices from 0 to 1
+
+The rowdata contains gene annotation, using Entrez-gene identifiers. I
+have also noticed that in the sce objects there's
+
+-   PCA, tSNE and UMAP coordinates for reduced dimensions + corrected
+    for batch values
+
+-   assay metafeatures hold gene_id, product, gene, is.rib.prot.gene
+    (T/F), HypoMarkers (T/F), ccyle (T/F), apopt (T/F) etc
+
+I converted the sce objects 6.6gb into a seurat object 2.2 gb and
+checked that all cited parameters could be found in it.
+
+# Summary of talks with Hannah and Celina
+
+-   REG_FOOT = It's a head that is regenerating a foot (counterintuitive)
+-   Clusters have been attributed with confidence except 10 which is likely doublets but should be explored further
+-   Cluster 5 are probably glands but I haven't found a characterized marker I could use with the Hydra atlas
+-   It looks like the feet neurons were not captured in this dataset :(
+-   Explore their pseudoaxis parameter maybe?? see the preprint (https://www.biorxiv.org/content/10.1101/2024.02.08.579449v1.full.pdf)
+
+
+# Data loading and upate on the project
+
+In this report we're gonna plot transcription factors of interest over the different timepoints.
+I also wanted to add cell population counts over time.
+Maybe I could learn to plot gene expression over time too?=
+Anyway, we're exploring gene expression programs and cell populations over time.
+
+```{r}
+# seurat objects
+seurat_f = readRDS("./data_output/interstitial/seurat_filtered.rds")
+# transcription factors of interest
+tr = read.xlsx("./data/mcbi_dataset_MH_annotated.xlsx", sheet = "transcription")
+
+```
+
+```{r}
+# changing labeled time from t6 to t06 so that it orders properly in the plots
+
+seurat_f@meta.data =
+  seurat_f@meta.data %>%
+  mutate(Timepoint =
+           ifelse(EXP_TIME == "REG_FOOT_t6", "REG_FOOT_t06",
+                         ifelse(EXP_TIME == "REG_HEAD_t6", "REG_HEAD_t06", EXP_TIME)))
+
+```
+
+# Subsetting by head/foot and timepoint
+## Not batch regressed
+
+```{r}
+
+Idents(seurat_f) = "Timepoint"
+DimPlot(seurat_f, label = FALSE)
+
+# Creating the head and foot data subset
+hfootf = subset(seurat_f, subset = EXP == "REG_FOOT")
+hheadf = subset(seurat_f, subset = EXP == "REG_HEAD")
+
+```
+
+```{r, fig.width=30, fig.height=6}
+
+# Plotting conditions separately
+
+Idents(hfootf) = hfootf@meta.data$SCT_snn_res.0.025
+Idents(hheadf) = hheadf@meta.data$SCT_snn_res.0.025
+
+DimPlot(hfootf, reduction = "umap", split.by = "Timepoint", pt.size = 1)
+
+DimPlot(hheadf, reduction = "umap", split.by = "Timepoint", pt.size = 1)
+
+```
+
+# Cluster attribution
+
+```{r, fig.width=8, fig.height=6}
+
+Idents(seurat_f) = "attr_clusters"
+
+DimPlot(seurat_f, label = TRUE)+
+  labs(title = "Attributed clusters")
+
+```
+
+# Transcription marker expression
+
+Celina provided me with a list of markers of interest that I tried to find in the 102 genome.
+
+```{r}
+
+tr %>% 
+  select(Symbol, Symbol_updated)
+
+```
+
+```{r}
+
+uh = DotPlot_scCustom(seurat_f, features = tr$Symbol_updated, 
+                      colors_use = viridis_plasma_dark_high,
+                      x_lab_rotate = T)+
+  labs(title = "Genes from the homeostatic animal")
+
+uh
+```
+
+```{r, fig.height=10, fig.width=15}
+
+FeaturePlot(object = seurat_f, 
+            features = tr$Symbol_updated,
+            reduction = "umap",
+            order = TRUE,
+            min.cutoff = 'q10', 
+            label = F,
+            repel = TRUE,
+            pt.size = 0.75)
+
+```
+
+# Pseudo-axis
+
+```{r}
+
+Idents(seurat_f) = "vals.axis_k25"
+
+DimPlot(seurat_f, label = TRUE)+
+  labs(title = "Pseudo-axis values")
+
+```
+
+# Scaling down to only neurons 
+
+I am scaling down to see if I can get genes with interesting patterns between stem cells -> neurons
+I am trying to see regulatory genes appear with the appearing head neuron cluster...
+
+```{r, eval=FALSE}
+
+neurons = subset(seurat_f, subset = attr_clusters %in% c("ISC/earlyNem","ec1A/B",
+                                                         "ec2","ec4","Ec3N/En1N"))  
+Idents(neurons) = "attr_clusters"
+
+DimPlot(neurons, label = TRUE)+
+  labs(title = "Pseudo-axis values")
+
+```
+
+## Reprocessing for re-clustering
+
+```{r}
+
+neurons <- RunPCA(neurons, features = VariableFeatures(object = neurons))
+DimPlot(neurons, reduction = "pca")
+
+neurons <- RunUMAP(neurons, dims = 1:28, seed.use = 054057)
+DimPlot(neurons, reduction = "umap", label = T)
+
+neurons <- FindNeighbors(neurons, dims = 1:28)
+
+neurons <- FindClusters(neurons, resolution = 0.025)
+DimPlot(neurons, label = TRUE)+
+  labs(title = "Resolution = 0.025")
+
+```
+
+```{r}
+# Creating the head and foot data subset
+hfootf = subset(neurons, subset = EXP == "REG_FOOT")
+hheadf = subset(neurons, subset = EXP == "REG_HEAD")
+
+```
+
+```{r, fig.width=30, fig.height=6}
+
+# Plotting conditions separately
+
+Idents(hfootf) = hfootf@meta.data$SCT_snn_res.0.025
+Idents(hheadf) = hheadf@meta.data$SCT_snn_res.0.025
+
+DimPlot(hfootf, reduction = "umap", split.by = "Timepoint", pt.size = 1)
+
+DimPlot(hheadf, reduction = "umap", split.by = "Timepoint", pt.size = 1)
+
+```
+
+
+```{r, fig.height=10, fig.width=15}
+
+FeaturePlot(object = neurons, 
+            features = tr$Symbol_updated,
+            reduction = "umap",
+            order = TRUE,
+            min.cutoff = 'q10', 
+            label = F,
+            repel = TRUE,
+            pt.size = 0.75)
+
+```
+
+
+
+```{r, eval = FALSE}
+write_rds(seurat_f, "./data_output/interstitial/seurat_filtered.rds")
+```
+
+# Session info
+
+```{r}
+sessionInfo()
+```

@@ -6,8 +6,8 @@ Rotation in Celina Juliano's lab studying the timeline of hydra regeneration aft
 
 Data from our collaborator Panagiotis rds file for a SingleCellExperiment object containing the single cell data for **the interstitial cells** of *Hydra Vulgaris* during multiples stages of regeneration after bisection
 
-This data was mapped to *Hydra Magnipapillata (105)* "Drop-seq reads from 15 libraries generated for Hydra vulgaris strain AEP were mapped to the 2.0 genome assembly of closely related Hydra vulgaris strain 105
-(available at <https://research.nhgri.nih.gov/hydra/>) and processed using the Hydra 2.0 gene models. Strain Hydra vulgaris 105 was formerly referred to as Hydra magnipapillata 105."
+This data was mapped to *Hydra Magnipapillata (102)* "Drop-seq reads from 15 libraries generated for Hydra vulgaris strain AEP were mapped to the 2.0 genome assembly of closely related Hydra vulgaris strain 102
+(available at <https://research.nhgri.nih.gov/hydra/>) and processed using the Hydra 2.0 gene models. Strain Hydra vulgaris 102 was formerly referred to as Hydra magnipapillata."
 
 The sce object contains only the interstitial cells that were selected by Panagiotis using the ..... markers
 
@@ -44,6 +44,7 @@ I converted the sce objects into a seurat object and did data processing + analy
 -    interstitial_report2_cluster_attribution
 -    interstitial_report3
 -    interstitial_report4_cluster_attribution
+-    interstitial_report5_transcription_timeline
 
 ## Interstitial_report1
 
@@ -87,14 +88,22 @@ Contains the same things as report2 BUT
 -    clusters were attributed
 -    we now have a first glimpse at transcription factor expression
 
+## Interstitial_report5_transcription_timeline
+
+Subclustered to only neurons in order to study neuron subtypes and appearances throughout regenaration.
+Allows for FindMarkers between clusters and timepoints.
+
+-    PCA, UMAP at 0.025 resolution
+-    Subgrouped per timepoints
+-    Transcription factor of interest expression
 
 ## Nota Bene
 
-The 105 genome is very fractionated and is poorly annotated compared to current available constructs.
-I had to manually cross HVAEP1 genome for the previously established celltype markers with the 105 genome.
-I did that by taking the HVAEP1 fasta file, blasting every established cell type marker transcript and finding if there's a >80% match for a transcript in 105. 
+The 102 genome is very fractionated and is poorly annotated compared to current available constructs.
+I had to manually cross HVAEP1 genome for the previously established celltype markers with the 102 genome.
+I did that by taking the HVAEP1 fasta file, blasting every established cell type marker transcript and finding if there's a >80% match for a transcript in 102. 
 Then I went back to the annotation file and changed the name of the transcript in a duplicated Symbol column called Symbol_updated.
-I also manually checked annotated genes that had a transcript in 105 but the ID didn't reflect it.
+I also manually checked annotated genes that had a transcript in 102 but the ID didn't reflect it.
 This is stored in an excel document called "mcbi_dataset_MH_annotated.xlsx"
 
 

@@ -74,6 +74,8 @@ Does not contain the regressed data as the batch and timepoints variables overla
 
 ## Interstitial_report4_cluster_attribution
 
+![image](figures/interstitial/attr_clusters_all.png)
+
 Contains the same things as report2 BUT
 -    more markers
 -    plots using the regressed data were discarded

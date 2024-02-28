@@ -102,8 +102,7 @@ seurat_f@meta.data =
 
 ```
 
-# Subsetting by head/foot and timepoint
-## Not batch regressed
+## Subsetting by head/foot and timepoint
 
 ```{r}
 
@@ -129,7 +128,7 @@ DimPlot(hheadf, reduction = "umap", split.by = "Timepoint", pt.size = 1)
 
 ```
 
-# Cluster attribution
+## Cluster attribution
 
 ```{r, fig.width=8, fig.height=6}
 
@@ -140,7 +139,7 @@ DimPlot(seurat_f, label = TRUE)+
 
 ```
 
-# Transcription marker expression
+## Transcription marker expression
 
 Celina provided me with a list of markers of interest that I tried to find in the 102 genome.
 
@@ -174,28 +173,18 @@ FeaturePlot(object = seurat_f,
 
 ```
 
-# Pseudo-axis
-
-```{r, eval=FALSE}
-
-Idents(seurat_f) = "vals.axis_k25"
-
-DimPlot(seurat_f, label = TRUE)+
-  labs(title = "Pseudo-axis values")
-
-```
-
-# Scaling down to only neurons 
+# Only neurons
 
 I am scaling down to see if I can get genes with interesting patterns between stem cells -> neurons
+
 I am trying to see regulatory genes appear with the appearing head neuron cluster...
 
 ```{r}
 
 neurons = subset(seurat_f, subset = attr_clusters %in% c("ISC/earlyNem","ec1A/B",
                                                          "ec2","ec4","Ec3N/En1N"))  
-Idents(neurons) = "attr_clusters"
 
+Idents(neurons) = "attr_clusters"
 
 ```
 
@@ -224,11 +213,34 @@ DimPlot(neurons, label = TRUE)+
 ```
 
 ```{r}
+Idents(neurons) = "batch"
+DimPlot(neurons, label = F)+
+  labs(title = "Resolution = 0.025")
+```
+
+
+```{r}
+
+neurons$Timepoint <- factor(neurons$Timepoint, 
+                            levels=c("REG_HEAD_t0", 
+                                     "REG_HEAD_t06", 
+                                     "REG_HEAD_t12", 
+                                     "REG_HEAD_t24", 
+                                     "REG_HEAD_t48", 
+                                     "REG_HEAD_t96",
+                                     "REG_FOOT_t0", 
+                                     "REG_FOOT_t06", 
+                                     "REG_FOOT_t12", 
+                                     "REG_FOOT_t24", 
+                                     "REG_FOOT_t48", 
+                                     "REG_FOOT_t96"))
+
 # Creating the head and foot data subset
 hfootf = subset(neurons, subset = EXP == "REG_FOOT")
 hheadf = subset(neurons, subset = EXP == "REG_HEAD")
 
 ```
+
 
 ```{r, fig.width=30, fig.height=6}
 
@@ -243,7 +255,147 @@ DimPlot(hheadf, reduction = "umap", split.by = "Timepoint", pt.size = 1)
 
 ```
 
+## Getting some number per cell population
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## Finding markers per clusters
+
+```{r, eval=FALSE} 
+# Find markers for each clusters------------------------------------------------
+
+# With the ` FindAllMarkers()` function we are comparing 
+# each cluster against all other clusters to identify potential marker genes. 
+# The cells in each cluster are treated as replicates, and essentially a 
+# differential expression analysis is performed with some statistical test.
+# By default, it's a wilcoxon rank sum test
+
+# Seurat lab suggested that DE analysis on obj@assay$RNA@data, which is normalized data (not scaled). So you are right, you should NormalizeData and then FindMarkers. However, Seurat 4 (not sure which small version exactly) starts to promotes DE analysis on obj@assay$SCT@scale.data, which is person residual. My experience is to try both and take the one that fits your goal because Seurat said both are not incorrect.
+
+# DO NOT RUN THIS COMMAND IF YOU'VE ALREADY DONE IT ONCE, THIS CHUNK IS EVAL = FALSE
+markers = FindAllMarkers(object = neurons,
+                         logfc.threshold = 0.5,
+                         assay = "SCT",
+                         slot = "scale.data")
+
+```
+
+```{r}
+
+markers = read.csv("./data_output/interstitial/markers_diff_per_cluster_neurons.csv")%>%
+  filter(p_val_adj < 0.05)
+
+# write.csv(markers, "./data_output/interstitial/markers_diff_per_cluster_neurons.csv")
+
+markers$gene = as.character(markers$gene)
+```
+
+
+```{r}
+head(markers)
+```
+
+```{r, fig.width=15, fig.height=10}
+
+target = markers %>% 
+  group_by(cluster) %>%
+  top_n(n = 7, wt = avg_diff) 
+
+target = 
+  target %>% 
+  filter(!duplicated(gene))
+
+target = target[!duplicated(target$gene),] 
+
+```
+
+I am going to scale down, these are too many unidentified genes.
+Let's keep:
+
+```{r, echo=TRUE}
+
+target <- c("NSP4","midasin","mini-COL8","SP-D-like","FH20-X3","CAII",
+            "CELA3B","zinc-carboxypeptidase","ANO39","TYN1","H2A.2.2","nas2-X2",
+            "Lwamide-X1","DMRT1","TUBA4A-X1","HTRA3","polRF-X1",
+            "nop58-X1","OTP","MEP1A","rhammosyl-O-methyltransferase","hywnt3",
+            "PPOD1","ks1","hyAlx","ELAV2","POU4","MUC2", "ec3", "grm1","myc",
+            "myc1","wnt3","ec2","ec1B","ec4","ec1A","en1","en1_NDF1_DANRE",
+            "101235516","100204363","100200547","100204143","100210809",
+            "100208683","100203070") 
+
+```
+
+### Foot neurons clusters per cell type
+
+```{r, fig.height=8, fig.width=10}
+
+Idents(hfootf) = "seurat_clusters"
+Idents(hheadf) = "seurat_clusters"
+
+p1 = Clustered_DotPlot(hfootf, features = target, k = 6)
+# print(p1[[2]])
+```
+
+### Head neurons clusters per cell type
+
+```{r, fig.height=8, fig.width=10}
+p2 = Clustered_DotPlot(hheadf, features = target, k = 6)
+```
+
+### Foot neurons clusters per timepoint
+
+```{r, fig.height=8, fig.width=10}
+Idents(hfootf) = "Timepoint"
+Idents(hheadf) = "Timepoint"
+
+DotPlot_scCustom(hfootf, features = target, 
+                      colors_use = viridis_plasma_dark_high,
+                      x_lab_rotate = T)+
+  coord_flip()
+```
+
+### Head neurons clusters per timepoint
+
+```{r, fig.height=8, fig.width=10}
+DotPlot_scCustom(hheadf, features = target, 
+                      colors_use = viridis_plasma_dark_high,
+                      x_lab_rotate = T)+
+  coord_flip()
+
+```
+
+### Feature plots
+
+```{r, fig.height=25, fig.width=15}
+
+FeaturePlot(object = neurons, 
+            features = target,
+            reduction = "umap",
+            order = TRUE,
+            min.cutoff = 'q10', 
+            label = F,
+            repel = TRUE,
+            pt.size = 0.75)
+
+```
+
+
+## Transcription factors
+### Feature plot
 ```{r, fig.height=10, fig.width=15}
 
 FeaturePlot(object = neurons, 
@@ -257,10 +409,46 @@ FeaturePlot(object = neurons,
 
 ```
 
+### Clustered dotplot
+
+```{r}
+Idents(hfootf) = "Timepoint"
+Idents(hheadf) = "Timepoint"
+
+DotPlot_scCustom(hfootf, features = tr$Symbol_updated, 
+                      colors_use = viridis_plasma_dark_high,
+                      x_lab_rotate = T)+
+  coord_flip()
+
+```
+
+```{r}
+DotPlot_scCustom(hheadf, features = tr$Symbol_updated, 
+                      colors_use = viridis_plasma_dark_high,
+                      x_lab_rotate = T)+
+  coord_flip()
+```
+
+## Neurons subclusters
+
+
+
+## Pseudo-axis
+
+```{r, eval=FALSE}
+
+Idents(neurons) = "vals.axis_k25"
+
+DimPlot(neurons, label = TRUE)+
+  labs(title = "Pseudo-axis values")
+
+```
 
 
 ```{r, eval = FALSE}
 write_rds(seurat_f, "./data_output/interstitial/seurat_filtered.rds")
+write_rds(neurons, "./data_output/interstitial/neurons.rds")
+
 ```
 
 # Session info

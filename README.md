@@ -87,9 +87,13 @@ Contains the same things as report2 BUT
 Subclustered to only neurons in order to study neuron subtypes and appearances throughout regenaration.
 Allows for FindMarkers between clusters and timepoints.
 
+Filtered to neurons only and re-clustered:
+
 -    PCA, UMAP at 0.025 resolution
--    Subgrouped per timepoints
--    Transcription factor of interest expression
+-    New cluster attribution (9 neuronal cell types)
+-    Subgrouped per timepoints and per regenerating organ (head vs foot)
+-    Plotting of cell population number over time (head vs foot)
+-    Transcription factor of interest expression: Feature plot and clustered dotplot
 
 ## Nota Bene
 

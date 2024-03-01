@@ -1,0 +1,319 @@
+---
+title: "scRNAseq Interstitial cells : What happens over time?"
+author: "Marion Hardy"
+date: "`r Sys.Date()`"
+output: 
+  html_document: 
+    toc: yes
+    theme: spacelab
+    highlight: monochrome
+editor_options: 
+  chunk_output_type: console
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE, cache = T, echo = FALSE, warning = F, cache.lazy = F)
+knitr::opts_chunk$set(fig.width=6, fig.height=4) 
+
+library(tidyverse)
+library(openxlsx)
+library(Seurat)
+library(scCustomize)
+```
+
+# Introduction
+
+Data from our collaborator Panagiotis rds file for a
+SingleCellExperiment object containing the single cell data for **the
+interstitial cells** of *Hydra Vulgaris* during multiples stages of
+regeneration after bisection:
+
+<https://www.dropbox.com/scl/fi/dg76sigjnj5u6qr06xk79/sce_interstitial_Juliano.rds?rlkey=f0y3lqt0wdcwq652zisnrpf9t&dl=0>
+
+BUT they mapped it to *Hydra Magnipapillata (102)* "Drop-seq reads from
+15 libraries generated for Hydra vulgaris strain AEP were mapped to the
+2.0 genome assembly of closely related Hydra vulgaris strain 102
+(available at <https://research.nhgri.nih.gov/hydra/>) and processed
+using the Hydra 2.0 gene models. Strain Hydra vulgaris 102 was formerly
+referred to as Hydra magnipapillata."
+
+The coldata of the object contain cell annotation including
+
+-   quality metrics: nFeature nCount (not MT percentage interestingly)
+
+-   batch info: either 2869 (3162 barcodes), 3113 (10352 barcodes), 3271
+    (13279 barcodes), 3357 (3875 barcodes)
+
+-   originating experiments (head or foot regeneration)
+
+-   experimental time points
+
+-   pseudo-axis assignment (vals.axis ranging from 0-1, increasing in
+    the foot-tentacle direction)
+
+-   mitotic and apoptotic signatures indices from 0 to 1
+
+The rowdata contains gene annotation, using Entrez-gene identifiers. I
+have also noticed that in the sce objects there's
+
+-   PCA, tSNE and UMAP coordinates for reduced dimensions + corrected
+    for batch values
+
+-   assay metafeatures hold gene_id, product, gene, is.rib.prot.gene
+    (T/F), HypoMarkers (T/F), ccyle (T/F), apopt (T/F) etc
+
+I converted the sce objects 6.6gb into a seurat object 2.2 gb and
+checked that all cited parameters could be found in it.
+
+# Summary of 2/28 meeting with Hannah and Celina
+
+-   REG_FOOT = It's a head that is regenerating a foot (counterintuitive)
+-   Clusters have been attributed with confidence except 10 which is likely doublets but should be explored further
+-   Cluster 5 are probably glands but I haven't found a characterized marker I could use with the Hydra atlas
+-   Blast transcription factors with the g id !
+-   Do population number evolution over time (not just neurons!)
+-   Cluster with 0.1 resolution
+-   Aligning to the 105 genome
+
+
+# Data loading and upate on the project
+
+In this report we're gonna plot transcription factors of interest over the different timepoints.
+I also wanted to add cell population counts over time.
+Maybe I could learn to plot gene expression over time too?=
+Anyway, we're exploring gene expression programs and cell populations over time.
+
+```{r}
+# seurat objects
+seurat_f = readRDS("./data_output/interstitial/seurat_filtered.rds")
+# transcription factors of interest
+tr = read.xlsx("./data/mcbi_dataset_MH_annotated.xlsx", sheet = "transcription")
+
+```
+
+## Changing UMAP resolution
+
+```{r}
+seurat_f <- FindClusters(seurat_f, resolution = 0.1)
+DimPlot(seurat_f, label = TRUE)+
+  labs(title = "Resolution = 0.1")
+
+```
+
+```{r, echo=TRUE}
+
+target <- c("NSP4","midasin","mini-COL8","SP-D-like","FH20-X3","CAII",
+            "CELA3B","zinc-carboxypeptidase","ANO39","TYN1","H2A.2.2","nas2-X2",
+            "Lwamide-X1","DMRT1","TUBA4A-X1","HTRA3","polRF-X1","ec3A","ec3B",
+            "nop58-X1","OTP","MEP1A","rhammosyl-O-methyltransferase","hywnt3",
+            "PPOD1","ks1","hyAlx","ELAV2","POU4","MUC2", "ec3", "grm1","myc",
+            "myc1","wnt3","ec2","ec1B","ec4","ec1A","en1","en1_NDF1_DANRE",
+            "ec5","en1","en2A","en2B") 
+
+```
+
+
+```{r}
+Idents(seurat_f) = "seurat_clusters"
+
+p1 = Clustered_DotPlot(seurat_f, features = target, k = 6)
+```
+
+```{r}
+seurat_f@meta.data <-
+  seurat_f@meta.data %>%
+  mutate(attr_clusters=
+           ifelse(seurat_clusters == "0", "ISC",
+           ifelse(seurat_clusters == "1", "Nb", 
+           ifelse(seurat_clusters == "2", "GranG/ZymoG",
+           ifelse(seurat_clusters == "3", "earlyGc", 
+           ifelse(seurat_clusters == "4", "Nb",
+           ifelse(seurat_clusters == "5", "earlyNem",
+           ifelse(seurat_clusters == "6", "Nb", 
+           ifelse(seurat_clusters == "7", "Nb",
+           ifelse(seurat_clusters == "8", "earlyNeur", 
+           ifelse(seurat_clusters == "9", "unknown/zymogen?",
+           ifelse(seurat_clusters == "10", "Nb", 
+           ifelse(seurat_clusters == "11", "ec1A",
+           ifelse(seurat_clusters == "12", "ec3n/en1n", 
+           ifelse(seurat_clusters == "13", "Nb",
+           ifelse(seurat_clusters == "14", "ec2",
+           ifelse(seurat_clusters == "15", "Nb", 
+           ifelse(seurat_clusters == "16", "ec1A/ec1B",
+           ifelse(seurat_clusters == "17", "ec3n/en1n", 
+           ifelse(seurat_clusters == "18", "doublets/triplets",
+           ifelse(seurat_clusters == "19", "ec4", 
+           ifelse(seurat_clusters == "20", "Nb",
+           NA))))))))))))))))))))))
+```
+
+```{r}
+Idents(seurat_f) = "attr_clusters"
+
+DimPlot(seurat_f, label = TRUE)+
+  labs(title = "Labelled UMAP")
+
+```
+
+## Subsetting by head/foot and timepoint
+
+```{r}
+
+Idents(seurat_f) = "Timepoint"
+DimPlot(seurat_f, label = FALSE)
+
+# Creating the head and foot data subset
+hfootf = subset(seurat_f, subset = EXP == "REG_FOOT")
+hheadf = subset(seurat_f, subset = EXP == "REG_HEAD")
+
+```
+
+```{r, fig.width=30, fig.height=6}
+
+# Plotting conditions separately
+Idents(hfootf) = "attr_clusters"
+DimPlot(hfootf, reduction = "umap", split.by = "Timepoint", pt.size = 0.5)
+
+Idents(hheadf) = "attr_clusters"
+DimPlot(hheadf, reduction = "umap", split.by = "Timepoint", pt.size = 0.5)
+
+```
+
+```{r, eval=FALSE}
+write_rds(seurat_f, "./data_output/interstitial/seurat_filtered_res01.rds")
+```
+
+## Cell population evolution over time
+### Regenerating a head
+```{r General statistics levels}
+
+aa = table(hheadf$attr_clusters, hheadf$Timepoint) 
+aa = rbind(aa, Sum = colSums(aa))
+# aa = aa[,1:6]
+
+aa %>% 
+  knitr::kable()
+```
+
+```{r}
+
+aadf =
+  aa %>% as.data.frame()
+
+aadf$celltype = rownames(aadf)
+
+aadf = 
+aadf %>% 
+  pivot_longer(names_to = "Timepoint",
+               values_to = "N_cells",
+               cols = 1:6)
+  
+aadf %>% 
+  filter(celltype != "Sum") %>% 
+  ggplot(aes(x = Timepoint,
+             y = N_cells, group = celltype, color = celltype))+
+  geom_line(linewidth = 1)+ 
+  theme_bw()+
+  theme(axis.text.x = element_text(angle = 70, vjust = 1, hjust=1))+
+  labs(title = "Regenerating a head", subtitle = "Cell number per population over time")
+
+aadf %>% 
+  filter(celltype != "Sum", celltype != "Nb") %>% 
+  ggplot(aes(x = Timepoint,
+             y = N_cells, group = celltype, color = celltype))+
+  geom_line(linewidth = 1)+ 
+  theme_bw()+
+  theme(axis.text.x = element_text(angle = 70, vjust = 1, hjust=1))+
+  labs(title = "Regenerating a head", subtitle = "Cell number per population over time")
+
+```
+
+### Regenerating a foot
+
+```{r}
+ab = table(hfootf$attr_clusters, hfootf$Timepoint) 
+ab = rbind(ab, Sum = colSums(ab))
+# ab = ab[,7:12]  
+
+ab %>% 
+  knitr::kable()
+```
+
+```{r}
+abdf =
+  ab %>% as.data.frame()
+
+abdf$celltype = rownames(abdf)
+
+abdf = 
+abdf %>% 
+  pivot_longer(names_to = "Timepoint",
+               values_to = "N_cells",
+               cols = 1:6)
+  
+abdf %>% 
+  filter(celltype != "Sum") %>% 
+  ggplot(aes(x = Timepoint,
+             y = N_cells, group = celltype, color = celltype))+
+  geom_line(linewidth = 1)+ 
+  theme_bw()+
+  theme(axis.text.x = element_text(angle = 70, vjust = 1, hjust=1))+
+  labs(title = "Regenerating a foot", subtitle = "Cell number per population over time")
+
+abdf %>% 
+  filter(celltype != "Sum", celltype != "Nb") %>% 
+  ggplot(aes(x = Timepoint,
+             y = N_cells, group = celltype, color = celltype))+
+  geom_line(linewidth = 1)+ 
+  theme_bw()+
+  theme(axis.text.x = element_text(angle = 70, vjust = 1, hjust=1))+
+  labs(title = "Regenerating a foot", subtitle = "Cell number per population over time")
+```
+
+## Transcription factors
+### Feature plot
+```{r, fig.height=10, fig.width=15}
+
+FeaturePlot(object = seurat_f, 
+            features = tr$Symbol_updated,
+            reduction = "umap",
+            order = TRUE,
+            min.cutoff = 'q10', 
+            label = F,
+            repel = TRUE,
+            pt.size = 0.75)
+
+```
+
+### Clustered dotplot
+
+```{r}
+Idents(hfootf) = "Timepoint"
+Idents(hheadf) = "Timepoint"
+
+DotPlot_scCustom(hfootf, features = tr$Symbol_updated, 
+                      colors_use = viridis_plasma_dark_high,
+                      x_lab_rotate = T)+
+  coord_flip()
+
+```
+
+```{r}
+DotPlot_scCustom(hheadf, features = tr$Symbol_updated, 
+                      colors_use = viridis_plasma_dark_high,
+                      x_lab_rotate = T)+
+  coord_flip()
+```
+
+```{r, eval = FALSE}
+write_rds(seurat_f, "./data_output/interstitial/seurat_filtered.rds")
+write_rds(neurons, "./data_output/interstitial/neurons.rds")
+```
+
+# Session info
+
+```{r}
+sessionInfo()
+```

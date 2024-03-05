@@ -21,6 +21,7 @@ library(tidyverse)
 library(openxlsx)
 library(Seurat)
 library(scCustomize)
+library(ggpubr)
 ```
 
 # Introduction
@@ -32,8 +33,8 @@ regeneration after bisection:
 
 <https://www.dropbox.com/scl/fi/dg76sigjnj5u6qr06xk79/sce_interstitial_Juliano.rds?rlkey=f0y3lqt0wdcwq652zisnrpf9t&dl=0>
 
-BUT they mapped it to *Hydra Magnipapillata (102)* "Drop-seq reads from
-15 libraries generated for Hydra vulgaris strain AEP were mapped to the
+BUT they mapped it to *Hydra Magnipapillata (102 version of 105)* "Drop-seq reads from
+15 libraries generated for Hydra vulgaris strain AEP?? were mapped to the
 2.0 genome assembly of closely related Hydra vulgaris strain 102
 (available at <https://research.nhgri.nih.gov/hydra/>) and processed
 using the Hydra 2.0 gene models. Strain Hydra vulgaris 102 was formerly
@@ -71,18 +72,23 @@ checked that all cited parameters could be found in it.
 
 -   REG_FOOT = It's a head that is regenerating a foot (counterintuitive)
 -   Clusters have been attributed with confidence except 10 which is likely doublets but should be explored further
--   Cluster 5 are probably glands but I haven't found a characterized marker I could use with the Hydra atlas
--   Blast transcription factors with the g id !
--   Do population number evolution over time (not just neurons!)
--   Cluster with 0.1 resolution
--   Aligning to the 105 genome
+-   Cluster 5 are probably glands but I haven't found a characterized marker I could use with the Hydra atlas, for mow they're called ZymoG/unknown
+-   Update the annotations by crossreferencing genes ID from 105, getting the sequence and blasting to find the 102 LOC ID.-> Done
+-   Do population number evolution over time (not just neurons!) -> Done 
+-   Cluster with 0.1 resolution -> Done
+-   Aligning to the 105 genome -> Slurm script being written, Hannah downloading GEO dataset
 
+Additional meeting with Hannah summary:
+
+-   Because the authors only say they sequenced 20-40 hydras per timepoint, cell counts should be relative to total amount of cells
+
+-   Plot these transcription factors of interest over time (DotPlot + split Featureplot)
 
 # Data loading and upate on the project
 
 In this report we're gonna plot transcription factors of interest over the different timepoints.
 I also wanted to add cell population counts over time.
-Maybe I could learn to plot gene expression over time too?=
+Maybe I could learn to plot gene expression over time too?
 Anyway, we're exploring gene expression programs and cell populations over time.
 
 ```{r}
@@ -134,7 +140,7 @@ seurat_f@meta.data <-
            ifelse(seurat_clusters == "6", "Nb", 
            ifelse(seurat_clusters == "7", "Nb",
            ifelse(seurat_clusters == "8", "earlyNeur", 
-           ifelse(seurat_clusters == "9", "unknown/zymogen?",
+           ifelse(seurat_clusters == "9", "unknown/ZymoG?",
            ifelse(seurat_clusters == "10", "Nb", 
            ifelse(seurat_clusters == "11", "ec1A",
            ifelse(seurat_clusters == "12", "ec3n/en1n", 
@@ -187,6 +193,8 @@ write_rds(seurat_f, "./data_output/interstitial/seurat_filtered_res01.rds")
 
 ## Cell population evolution over time
 ### Regenerating a head
+#### "Raw" cell numbers
+
 ```{r General statistics levels}
 
 aa = table(hheadf$attr_clusters, hheadf$Timepoint) 
@@ -230,8 +238,56 @@ aadf %>%
 
 ```
 
-### Regenerating a foot
+#### Relative number of cells
 
+```{r}
+
+vec = colSums(aa[1:13,])
+vec = vec[vec!=0]
+
+percent = round(sweep(aa,2,vec, '/')*100,2)
+
+percent %>% 
+  knitr::kable()
+
+percentdf = as.data.frame(percent)
+percentdf$celltype = rownames(percentdf)
+
+percentdf = 
+percentdf %>% 
+  pivot_longer(names_to = "Timepoint",
+               values_to = "N_cells",
+               cols = 1:6)
+
+p1 = 
+percentdf %>% 
+  filter(celltype != "Sum") %>% 
+  ggplot(aes(x = Timepoint,
+             y = N_cells, group = celltype, color = celltype))+
+  geom_line(linewidth = 1)+ 
+  theme_bw()+
+  theme(axis.text.x = element_text(angle = 70, vjust = 1, hjust=1))+
+  ylab("% cell population")+
+  labs(title = "Regenerating a head", subtitle = "Relative cell % per population over time")
+
+p2=
+percentdf %>% 
+  filter(!celltype %in% c("Sum", "Nb", "ec2","ec3n/en1n","ec4","doublets/triplets", 
+                          "unknowm/ZymoG?","ec1A","ec1A/ec1B")) %>% 
+  ggplot(aes(x = Timepoint,
+             y = N_cells, group = celltype, color = celltype))+
+  geom_line(linewidth = 1)+ 
+  theme_bw()+
+  theme(axis.text.x = element_text(angle = 70, vjust = 1, hjust=1))+
+  ylab("% cell population")+
+  labs(title = "Regenerating a head", subtitle = "Removed nematoblasts")
+
+ggarrange(p1,p2,ncol = 2, nrow = 1)
+
+```
+
+### Regenerating a foot
+#### "Raw" cell numbers
 ```{r}
 ab = table(hfootf$attr_clusters, hfootf$Timepoint) 
 ab = rbind(ab, Sum = colSums(ab))
@@ -241,7 +297,7 @@ ab %>%
   knitr::kable()
 ```
 
-```{r}
+```{r, fig.height=8, fig.width=12}
 abdf =
   ab %>% as.data.frame()
 
@@ -252,7 +308,7 @@ abdf %>%
   pivot_longer(names_to = "Timepoint",
                values_to = "N_cells",
                cols = 1:6)
-  
+p1 =  
 abdf %>% 
   filter(celltype != "Sum") %>% 
   ggplot(aes(x = Timepoint,
@@ -262,6 +318,7 @@ abdf %>%
   theme(axis.text.x = element_text(angle = 70, vjust = 1, hjust=1))+
   labs(title = "Regenerating a foot", subtitle = "Cell number per population over time")
 
+p2 =
 abdf %>% 
   filter(celltype != "Sum", celltype != "Nb") %>% 
   ggplot(aes(x = Timepoint,
@@ -269,24 +326,61 @@ abdf %>%
   geom_line(linewidth = 1)+ 
   theme_bw()+
   theme(axis.text.x = element_text(angle = 70, vjust = 1, hjust=1))+
-  labs(title = "Regenerating a foot", subtitle = "Cell number per population over time")
+  labs(title = "Regenerating a foot", subtitle = "Removed nematoblasts")
+
+ggarrange(p1,p2,ncol = 2, nrow = 1)
+
+```
+
+#### Relative number of cells
+
+```{r}
+
+vec = colSums(ab[1:13,])
+vec = vec[vec!=0]
+
+percent = round(sweep(ab,2,vec, '/')*100,2)
+
+percent %>% 
+  knitr::kable()
+
+percentdf = as.data.frame(percent)
+percentdf$celltype = rownames(percentdf)
+
+percentdf = 
+percentdf %>% 
+  pivot_longer(names_to = "Timepoint",
+               values_to = "N_cells",
+               cols = 1:6)
+
+p1 = 
+percentdf %>% 
+  filter(celltype != "Sum") %>% 
+  ggplot(aes(x = Timepoint,
+             y = N_cells, group = celltype, color = celltype))+
+  geom_line(linewidth = 1)+ 
+  theme_bw()+
+  ylab("% cell population")+
+  theme(axis.text.x = element_text(angle = 70, vjust = 1, hjust=1))+
+  labs(title = "Regenerating a foot", subtitle = "Relative cell % per population over time")
+
+p2=
+percentdf %>% 
+  filter(!celltype %in% c("Sum", "Nb", "ec2","ec3n/en1n","ec4","doublets/triplets", 
+                          "unknowm/ZymoG?","ec1A","ec1A/ec1B")) %>% 
+  ggplot(aes(x = Timepoint,
+             y = N_cells, group = celltype, color = celltype))+
+  geom_line(linewidth = 1)+ 
+  theme_bw()+
+  ylab("% cell population")+
+  theme(axis.text.x = element_text(angle = 70, vjust = 1, hjust=1))+
+  labs(title = "Regenerating a foot", subtitle = "Removed nematoblasts")
+
+ggarrange(p1,p2,ncol = 2, nrow = 1)
+
 ```
 
 ## Transcription factors
-### Feature plot
-```{r, fig.height=10, fig.width=15}
-
-FeaturePlot(object = seurat_f, 
-            features = tr$Symbol_updated,
-            reduction = "umap",
-            order = TRUE,
-            min.cutoff = 'q10', 
-            label = F,
-            repel = TRUE,
-            pt.size = 0.75)
-
-```
-
 ### Clustered dotplot
 
 ```{r}
@@ -306,6 +400,36 @@ DotPlot_scCustom(hheadf, features = tr$Symbol_updated,
                       x_lab_rotate = T)+
   coord_flip()
 ```
+
+### Feature plot
+```{r, fig.height=10, fig.width=15}
+
+FeaturePlot(object = seurat_f, 
+            features = tr$Symbol_updated,
+            reduction = "umap",
+            order = TRUE,
+            min.cutoff = 'q10', 
+            label = F,
+            repel = TRUE,
+            pt.size = 0.75)
+
+```
+
+
+```{r, fig.height=45, fig.width=15}
+
+FeaturePlot(object = seurat_f, 
+            features = tr$Symbol_updated,
+            reduction = "umap",
+            order = TRUE,
+            min.cutoff = 'q10', 
+            label = F,
+            repel = TRUE,
+            pt.size = 0.75,
+            split.by = seurat_f$Timepoint)
+
+```
+
 
 ```{r, eval = FALSE}
 write_rds(seurat_f, "./data_output/interstitial/seurat_filtered.rds")

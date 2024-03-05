@@ -108,6 +108,9 @@ Final report for this rotation. Contains:
 
 This report describes a changing cell population and ties it back to specific transcription factor expression.
 
+![image](figures/unnamed-chunk-11-1.png)
+
+
 ## Nota Bene
 
 The 102 genome is very fractionated and is poorly annotated compared to current available constructs.

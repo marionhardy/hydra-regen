@@ -96,6 +96,21 @@ Anyway, we're exploring gene expression programs and cell populations over time.
 seurat_f = readRDS("./data_output/interstitial/seurat_filtered.rds")
 # transcription factors of interest
 tr = read.xlsx("./data/mcbi_dataset_MH_annotated.xlsx", sheet = "transcription")
+# reorder the timepoints
+
+seurat_f$Timepoint <- factor(seurat_f$Timepoint, 
+                            levels=c("REG_HEAD_t0", 
+                                     "REG_HEAD_t06", 
+                                     "REG_HEAD_t12", 
+                                     "REG_HEAD_t24", 
+                                     "REG_HEAD_t48", 
+                                     "REG_HEAD_t96",
+                                     "REG_FOOT_t0", 
+                                     "REG_FOOT_t06", 
+                                     "REG_FOOT_t12", 
+                                     "REG_FOOT_t24", 
+                                     "REG_FOOT_t48", 
+                                     "REG_FOOT_t96"))
 
 ```
 
@@ -199,7 +214,7 @@ write_rds(seurat_f, "./data_output/interstitial/seurat_filtered_res01.rds")
 
 aa = table(hheadf$attr_clusters, hheadf$Timepoint) 
 aa = rbind(aa, Sum = colSums(aa))
-# aa = aa[,1:6]
+aa = aa[,1:6]
 
 aa %>% 
   knitr::kable()
@@ -235,7 +250,7 @@ aadf %>%
   geom_line(linewidth = 1)+ 
   theme_bw()+
   theme(axis.text.x = element_text(angle = 70, vjust = 1, hjust=1))+
-  labs(title = "Regenerating a head", subtitle = "Cell number per population over time")
+  labs(title = "Regenerating a head", subtitle = "Removed nematoblasts")
 
 p1+p2
 ```
@@ -282,7 +297,7 @@ percentdf %>%
   theme_bw()+
   theme(axis.text.x = element_text(angle = 70, vjust = 1, hjust=1))+
   ylab("% cell population")+
-  labs(title = "Regenerating a head", subtitle = "Removed nematoblasts")
+  labs(title = "Regenerating a head", subtitle = "Removed multiple cell types")
 
 ggarrange(p1,p2,ncol = 2, nrow = 1)
 
@@ -295,7 +310,7 @@ Notice how early Gc decrease almost 5x between 12-24 hours while ISC, GranG and 
 ```{r}
 ab = table(hfootf$attr_clusters, hfootf$Timepoint) 
 ab = rbind(ab, Sum = colSums(ab))
-# ab = ab[,7:12]  
+ab = ab[,7:12]  
 
 ab %>% 
   knitr::kable()
@@ -378,7 +393,7 @@ percentdf %>%
   theme_bw()+
   ylab("% cell population")+
   theme(axis.text.x = element_text(angle = 70, vjust = 1, hjust=1))+
-  labs(title = "Regenerating a foot", subtitle = "Removed nematoblasts")
+  labs(title = "Regenerating a foot", subtitle = "Removed multiple cell types")
 
 ggarrange(p1,p2,ncol = 2, nrow = 1)
 
@@ -424,7 +439,7 @@ FeaturePlot(object = seurat_f,
 
 ```
 
-### Regenrating a head
+### Regenerating a head
 ```{r, fig.height=45, fig.width=30}
 
 FeaturePlot(object = hheadf, 

@@ -110,6 +110,11 @@ This report describes a changing cell population and ties it back to specific tr
 
 ![image](figures/interstitial/unnamed-chunk-11-1.png)
 
+## Interstitial_report6_population_evolution
+
+-    Notes on a meeting with Celina and Hannah and what to change in report 6
+-    Relabel the clusters
+-    Pltting cell cycle scores, axis scores and apoptosis scores
 
 ## Nota Bene
 

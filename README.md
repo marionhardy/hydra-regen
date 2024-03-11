@@ -54,7 +54,7 @@ I converted the sce objects into a seurat object and did data processing + analy
 ## Interstitial_report1
 
 -    Contains the exploration of the data (batches, features, metadata etc)
--    Quality check based on nFeatures and nCounts (no mitochondrial genes in the 105 genome)
+-    Quality check based on nFeatures and nCounts (no mitochondrial genes in the 102 genome)
 -    Scaling using SCTransform() and regression (or not) of the batch variable
 -    Selection of the first 28 dimensions for UMAP projection
 -    PCA, UMAP, Clustering at different resolutions (0.025, 0.1, 0.3)

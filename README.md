@@ -105,7 +105,7 @@ Contains:
 -    Notes on a meeting with Celina and Hannah and what to change in report 5
 -    UMAP and cluster labelling at resolution = 0.1 instead of 0.025
 -    Subsetting by cluster and over time
--    Evolution of cell population over time: Raw counts and percentage composition of the Hydra + divided by hear of foot
+-    Evolution of cell population over time: Raw counts and percentage composition of the Hydra + divided by head of foot
 -    Transcription factor expression: Feature plot all timepoints + Dotplot over time
 -    Transcription factor expression: Over time
 

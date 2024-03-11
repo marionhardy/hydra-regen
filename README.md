@@ -97,7 +97,7 @@ Filtered to neurons only and re-clustered:
 
 ## Interstitial_report6_population_evolution
 
-Final report for this rotation. Contains:
+Contains:
 
 -    Notes on a meeting with Celina and Hannah and what to change in report 5
 -    UMAP and cluster labelling at resolution = 0.1 instead of 0.025
@@ -110,11 +110,13 @@ This report describes a changing cell population and ties it back to specific tr
 
 ![image](figures/interstitial/unnamed-chunk-11-1.png)
 
-## Interstitial_report6_population_evolution
+## Interstitial_report7_population_evolution
 
 -    Notes on a meeting with Celina and Hannah and what to change in report 6
--    Relabel the clusters
--    Pltting cell cycle scores, axis scores and apoptosis scores
+-    Relabelling the clusters (although I believe the en cluster should be changed back to doublet/triplet because of the apoptosis score)
+-    Plotting cell cycle scores, axis scores and apoptosis scores
+
+This is the report that was used to make the powerpoint I added here.
 
 ## Nota Bene
 

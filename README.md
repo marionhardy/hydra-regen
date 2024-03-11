@@ -6,7 +6,7 @@ Rotation in Celina Juliano's lab studying the timeline of hydra regeneration aft
 
 Data from our collaborator Panagiotis rds file for a SingleCellExperiment object containing the single cell data for **the interstitial cells** of *Hydra Vulgaris* during multiples stages of regeneration after bisection:
 
-<https://www.dropbox.com/scl/fi/dg76sigjnj5u6qr06xk79/sce_interstitial_Juliano.rds?rlkey=f0y3lqt0wdcwq652zisnrpf9t&dl=0>
+<https://doi.org/10.1101/2024.02.08.579449>
 
 BUT they mapped it to *Hydra Magnipapillata (102 version of 105)* "Quantification of the generated single cell libraries was performed using the Salmon-Alevin software suite 
 (Salmon version 1.6.0) against the ncbi Hydra 102 transcriptome."

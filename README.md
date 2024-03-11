@@ -4,12 +4,14 @@ Rotation in Celina Juliano's lab studying the timeline of hydra regeneration aft
 
 ## Introduction
 
-Data from our collaborator Panagiotis rds file for a SingleCellExperiment object containing the single cell data for **the interstitial cells** of *Hydra Vulgaris* during multiples stages of regeneration after bisection
+Data from our collaborator Panagiotis rds file for a SingleCellExperiment object containing the single cell data for **the interstitial cells** of *Hydra Vulgaris* during multiples stages of regeneration after bisection:
 
-This data was mapped to *Hydra Magnipapillata (102)* "Drop-seq reads from 15 libraries generated for Hydra vulgaris strain AEP were mapped to the 2.0 genome assembly of closely related Hydra vulgaris strain 102
-(available at <https://research.nhgri.nih.gov/hydra/>) and processed using the Hydra 2.0 gene models. Strain Hydra vulgaris 102 was formerly referred to as Hydra magnipapillata."
+<https://www.dropbox.com/scl/fi/dg76sigjnj5u6qr06xk79/sce_interstitial_Juliano.rds?rlkey=f0y3lqt0wdcwq652zisnrpf9t&dl=0>
 
-The sce object contains only the interstitial cells that were selected by Panagiotis using the ..... markers
+BUT they mapped it to *Hydra Magnipapillata (102 version of 105)* "Quantification of the generated single cell libraries was performed using the Salmon-Alevin software suite 
+(Salmon version 1.6.0) against the ncbi Hydra 102 transcriptome."
+
+The sce object contains only the interstitial cells that were selected by Panagiotis using the ..... markers -> Not indicated in the preprint either.
 
 The coldata of the object contain cell annotation including
 
@@ -80,8 +82,6 @@ Contains the same things as report2 BUT
 -    clusters were attributed
 -    we now have a first glimpse at transcription factor expression
 
-![image](figures/interstitial/attr_clusters_all.png)
-
 ## Interstitial_report5_transcription_timeline
 
 Subclustered to only neurons in order to study neuron subtypes and appearances throughout regenaration.
@@ -117,6 +117,8 @@ This report describes a changing cell population and ties it back to specific tr
 -    Plotting cell cycle scores, axis scores and apoptosis scores
 
 This is the report that was used to make the powerpoint I added here.
+
+![image](figures/interstitial/umap.png)
 
 ## Nota Bene
 

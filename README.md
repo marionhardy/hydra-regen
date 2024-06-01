@@ -8,7 +8,7 @@ Data from our collaborator Panagiotis rds file for a SingleCellExperiment object
 
 <https://doi.org/10.1101/2024.02.08.579449>
 
-BUT they mapped it to *Hydra Magnipapillata (102 version of 105)* "Quantification of the generated single cell libraries was performed using the Salmon-Alevin software suite 
+BUT they mapped it to *Hydra Magnipapillata* (102 version of 105) "Quantification of the generated single cell libraries was performed using the Salmon-Alevin software suite 
 (Salmon version 1.6.0) against the ncbi Hydra 102 transcriptome."
 
 The sce object contains only the interstitial cells that were selected by Panagiotis using the ..... markers -> Not indicated in the preprint either.

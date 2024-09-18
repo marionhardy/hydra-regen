@@ -50,6 +50,7 @@ I converted the sce objects into a seurat object and did data processing + analy
 -    Interstitial_report6_population_evolution
 -    Interstitial_report7_population_evolution
 -    PowerPoint presentation I gave to the lab in the last week of my rotation
+-    seurat_all_modifications_reports_1to7.R
 
 ## Interstitial_report1
 
@@ -122,6 +123,10 @@ This report describes a changing cell population and ties it back to specific tr
 This is the report that was used to make the powerpoint I added here.
 
 ![image](figures/interstitial/umap.png)
+
+## seurat_all_modifications_reports_1to7.R
+
+Summary of all operations done to the initial Seurat assay. This should make it easier for anyone to pick up the project/data analysis in the future.
 
 ## Nota Bene
 
